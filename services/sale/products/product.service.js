@@ -7,29 +7,43 @@ class ProductManagementService {
   /**
    * Yangi mahsulot yaratish
    */
-  async create(data, authorId) {
-    try {
-      // 1. Shtrix-kod takrorlanmasligini tekshirish
-      const existingProduct = await Product.findOne({ code: data.code });
-      if (existingProduct) {
-        return { success: false, msg: `Diqqat: ${data.code} kodli mahsulot allaqachon mavjud!` };
-      }
-
-      // 2. Yangi obyektni tayyorlash
-      const newProductPayload = {
-        ...data,
-        author: authorId,
-        // Frontenddan kelayotgan rasm yo'li (agar controllerda multer sozlangan bo'lsa)
-        image: data.image || "" 
-      };
-
-      const newProduct = await Product.create(newProductPayload);
-      return { success: true, msg: "Mahsulot muvaffaqiyatli qo'shildi!", data: newProduct };
-    } catch (error) {
-      console.error("Product Create Error:", error);
-      return { success: false, msg: `Xatolik: ${error.message}` };
+ async create(data, authorId) {
+  try {
+    // 1. Shtrix-kod takrorlanmasligini tekshirish
+    const existingProduct = await Product.findOne({ code: data.code });
+    if (existingProduct) {
+      return { success: false, msg: `Diqqat: ${data.code} kodli mahsulot allaqachon mavjud!` };
     }
+
+    // 2. Rasm yo'lini to'liq URL ga aylantirish
+    let fullImageUrl = "";
+    if (data.image) {
+      // Agar rasm yo'li allaqachon http bilan boshlansa (masalan, eski ma'lumot)
+      if (data.image.startsWith('http')) {
+        fullImageUrl = data.image;
+      } else {
+        // BASE_URL ni .env dan olamiz (https://safymilk-core.company-erp.uz)
+        // data.image esa "uploads/products/product-123.jpg" ko'rinishida bo'ladi
+        const baseUrl = process.env.BASE_URL.replace(/\/+$/, ''); // Oxiridagi / ni olib tashlaydi
+        const imagePath = data.image.replace(/^\/+/, '');        // Boshidagi / ni olib tashlaydi
+        fullImageUrl = `${baseUrl}/${imagePath}`;
+      }
+    }
+
+    // 3. Yangi obyektni tayyorlash
+    const newProductPayload = {
+      ...data,
+      author: authorId,
+      image: fullImageUrl // Endi bazaga to'liq URL yoziladi
+    };
+
+    const newProduct = await Product.create(newProductPayload);
+    return { success: true, msg: "Mahsulot muvaffaqiyatli qo'shildi!", data: newProduct };
+  } catch (error) {
+    console.error("Product Create Error:", error);
+    return { success: false, msg: `Xatolik: ${error.message}` };
   }
+}
 
   /**
    * Mahsulotni tahrirlash

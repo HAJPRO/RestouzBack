@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS sozlamalari
 const allowedOrigins = [
   "https://safymilk.company-erp.uz",
-  "https://ecowater.company-erp.uz"
+  "http://localhost:5173"
 ];
 
 const corsOptions = {
