@@ -17,9 +17,9 @@ app.use(express.urlencoded({ extended: true }));
 // CORS sozlamalari
 const isProd = process.env.NODE_ENV === "production";
 const allowedOrigins = [
-  "safymilk.company-erp.uz"
+  "https://safymilk.company-erp.uz",
 ];
-
+console.log("Joriy NODE_ENV:", process.env.NODE_ENV);
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin || !isProd || allowedOrigins.includes(origin)) {
@@ -92,7 +92,7 @@ app.use("/api/v1/warehouses/input", require("./routes/warehouses/input/input.rou
 app.use(errorMiddleware);
 
 // ------------------ START ------------------
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 const START = async () => {
   try {
