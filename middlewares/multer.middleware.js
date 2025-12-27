@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // 1. Papka mavjudligini tekshirish (papkalar bo'lmasa Multer xato beradi)
-const uploadDir = 'uploads/products/';
+const uploadDir = 'public/';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }

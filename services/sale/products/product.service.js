@@ -12,50 +12,43 @@ class ProductManagementService {
     // 1. Shtrix-kod takrorlanmasligini tekshirish
     const existingProduct = await Product.findOne({ code: data.code });
     if (existingProduct) {
-      return { 
-        success: false, 
-        msg: `Diqqat: ${data.code} kodli mahsulot allaqachon mavjud!` 
-      };
+      return { success: false, msg: `Diqqat: ${data.code} kodli mahsulot mavjud!` };
     }
 
-    // 2. Rasm yo'lini to'liq URL ga aylantirish mantiig'i
+    // 2. Rasm yo'lini to'liq va to'g'ri URL ga aylantirish
     let fullImageUrl = "";
     if (data.image) {
-      // Agar rasm allaqachon to'liq URL bo'lsa (masalan, tashqi havola)
-      if (data.image.startsWith('http')) {
-        fullImageUrl = data.image;
+      // Windows'dagi teskari sleshlarni ( \ ) to'g'ri sleshga ( / ) o'tkazamiz
+      let cleanPath = data.image.replace(/\\/g, '/');
+
+      // Agar rasm 'public/' papkasida bo'lsa, URL'da 'public' so'zi bo'lmasligi kerak
+      // Masalan: 'public/product-123.jpg' -> 'product-123.jpg'
+      cleanPath = cleanPath.replace(/^public\//, '').replace(/^\/+/, '');
+
+      if (cleanPath.startsWith('http')) {
+        fullImageUrl = cleanPath;
       } else {
-        // .env dagi BASE_URL ni olamiz (https://safymilk-core.company-erp.uz)
-        // replace() yordamida URL dagi ortiqcha slahlar tozalanadi
+        // .env dagi BASE_URL: https://safymilk-core.company-erp.uz
         const baseUrl = (process.env.BASE_URL || "").replace(/\/+$/, '');
-        const imagePath = data.image.replace(/^\/+/, '');
-        
-        fullImageUrl = `${baseUrl}/${imagePath}`;
+        fullImageUrl = `${baseUrl}/${cleanPath}`;
       }
     }
 
-    // 3. Yangi mahsulot obyektini tayyorlash
-    const newProductPayload = {
+    // 3. Bazaga saqlash
+    const newProduct = await Product.create({
       ...data,
       author: authorId,
-      image: fullImageUrl // Endi bazada to'liq URL (https://...) saqlanadi
-    };
+      image: fullImageUrl 
+    });
 
-    // 4. Bazaga saqlash
-    const newProduct = await Product.create(newProductPayload);
-    
     return { 
       success: true, 
       msg: "Mahsulot muvaffaqiyatli qo'shildi!", 
       data: newProduct 
     };
-
   } catch (error) {
     console.error("Product Create Error:", error);
-    return { 
-      success: false, 
-      msg: `Xatolik yuz berdi: ${error.message}` 
-    };
+    return { success: false, msg: `Xatolik: ${error.message}` };
   }
 }
 
