@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS sozlamalari
 const isProd = process.env.NODE_ENV === "production";
 const allowedOrigins = [
-  "https://ecowater.company-erp.uz"
+  "safymilk.company-erp.uz"
 ];
 
 const corsOptions = {
