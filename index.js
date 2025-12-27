@@ -10,7 +10,7 @@ const app = express();
 
 // ------------------ MIDDLEWARES ------------------
 
-// Body parsers
+// Body parsers//
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
