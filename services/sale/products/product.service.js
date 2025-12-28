@@ -1,49 +1,49 @@
 const Product = require("../../../models/Sale/products/product.model");
 const { ExportToExcelUniversal } = require("../../../utils/excelHelper");
 const moment = require('moment-timezone');
+ const { generateQRCode } = require('../../../utils/generater'); // Yo'lni tekshiring
 
 class ProductManagementService {
 
   /**
    * Yangi mahsulot yaratish
    */
- async create(data, authorId) {
+
+async create(data, authorId) {
   try {
-    // 1. Shtrix-kod takrorlanmasligini tekshirish
+    // 1. Tekshirish
     const existingProduct = await Product.findOne({ code: data.code });
     if (existingProduct) {
       return { success: false, msg: `Diqqat: ${data.code} kodli mahsulot mavjud!` };
     }
 
-    // 2. Rasm yo'lini to'liq va to'g'ri URL ga aylantirish
+    // 2. QR Kodni generatsiya qilish (Utility orqali)
+    const qrCodeBase64 = await generateQRCode(data.code);
+
+    // 3. Rasm yo'lini to'g'rilash (Sizning kodingiz)
     let fullImageUrl = "";
     if (data.image) {
-      // Windows'dagi teskari sleshlarni ( \ ) to'g'ri sleshga ( / ) o'tkazamiz
-      let cleanPath = data.image.replace(/\\/g, '/');
-
-      // Agar rasm 'public/' papkasida bo'lsa, URL'da 'public' so'zi bo'lmasligi kerak
-      // Masalan: 'public/product-123.jpg' -> 'product-123.jpg'
-      cleanPath = cleanPath.replace(/^public\//, '').replace(/^\/+/, '');
-
+      let cleanPath = data.image.replace(/\\/g, '/').replace(/^public\//, '').replace(/^\/+/, '');
+      
       if (cleanPath.startsWith('http')) {
         fullImageUrl = cleanPath;
       } else {
-        // .env dagi BASE_URL: https://safymilk-core.company-erp.uz
         const baseUrl = (process.env.BASE_URL || "").replace(/\/+$/, '');
         fullImageUrl = `${baseUrl}/${cleanPath}`;
       }
     }
 
-    // 3. Bazaga saqlash
+    // 4. Bazaga saqlash
     const newProduct = await Product.create({
       ...data,
       author: authorId,
-      image: fullImageUrl 
+      image: fullImageUrl,
+      qr: qrCodeBase64 // Base64 matni saqlanadi
     });
 
     return { 
       success: true, 
-      msg: "Mahsulot muvaffaqiyatli qo'shildi!", 
+      msg: "Mahsulot va QR kod yaratildi!", 
       data: newProduct 
     };
   } catch (error) {
@@ -55,39 +55,57 @@ class ProductManagementService {
   /**
    * Mahsulotni tahrirlash
    */
-  async update(id, updateData) {
-    try {
-      // 1. Faqat xavfsizlik nuqtai nazaridan o'chirilishi kerak bo'lgan maydonlar
-      // totalStock faqat ombor amaliyoti (kirim/chiqim) orqali o'zgarishi kerak
-      delete updateData.totalStock; 
-      delete updateData.author;
-      delete updateData._id;
 
-      // 2. Agar code o'zgarayotgan bo'lsa, unikal ekanligini tekshirish
-      if (updateData.code) {
-        const duplicate = await Product.findOne({ code: updateData.code, _id: { $ne: id } });
-        if (duplicate) {
-          return { success: false, msg: "Bu shtrix-kod boshqa mahsulotda band!" };
-        }
-      }
+async update(id, updateData) {
+  try {
+    // 1. Xavfsizlik: o'zgarmasligi kerak bo'lgan maydonlarni tozalash
+    delete updateData.totalStock; // Ombor qoldig'i faqat kirim/chiqim orqali o'zgarishi shart
+    delete updateData.author;
+    delete updateData._id;
 
-      // 3. Mahsulotni yangilash
-      const updatedProduct = await Product.findByIdAndUpdate(
-        id, 
-        { $set: updateData }, // $set ishlatish xavfsizroq
-        { new: true, runValidators: true } 
-      );
-      
-      if (!updatedProduct) {
-        return { success: false, msg: "Mahsulot topilmadi" };
-      }
-
-      return { success: true, msg: "Mahsulot muvaffaqiyatli yangilandi!", data: updatedProduct };
-    } catch (error) {
-      console.error("Product Update Error:", error);
-      return { success: false, msg: `Xatolik: ${error.message}` };
+    // 2. Mavjud mahsulotni tekshirish
+    const product = await Product.findById(id);
+    if (!product) {
+      return { success: false, msg: "Mahsulot topilmadi" };
     }
+
+    // 3. Kod o'zgarganda unikal ekanligini tekshirish va yangi QR kod yaratish
+    if (updateData.code && updateData.code !== product.code) {
+      // Unikallikni tekshirish
+      const duplicate = await Product.findOne({ code: updateData.code, _id: { $ne: id } });
+      if (duplicate) {
+        return { success: false, msg: "Bu shtrix-kod boshqa mahsulotda band!" };
+      }
+
+      // KOD O'ZGARDI -> QR KODNI QAYTA GENERATSIYA QILAMIZ
+      updateData.qr = await generateQRCode(updateData.code);
+    }
+
+    // 4. Rasm yangilanayotgan bo'lsa, URL formatini to'g'rilash
+    if (updateData.image && !updateData.image.startsWith('http')) {
+      let cleanPath = updateData.image.replace(/\\/g, '/').replace(/^public\//, '').replace(/^\/+/, '');
+      const baseUrl = (process.env.BASE_URL || "").replace(/\/+$/, '');
+      updateData.image = `${baseUrl}/${cleanPath}`;
+    }
+
+    // 5. Mahsulotni bazada yangilash
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    return { 
+      success: true, 
+      msg: "Mahsulot ma'lumotlari yangilandi!", 
+      data: updatedProduct 
+    };
+
+  } catch (error) {
+    console.error("Product Update Error:", error);
+    return { success: false, msg: `Xatolik: ${error.message}` };
   }
+}
 
   /**
    * Barcha mahsulotlarni pagination va filter bilan olish

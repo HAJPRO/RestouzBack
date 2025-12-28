@@ -32,7 +32,7 @@ const ProductSchema = new Schema(
       type: String,
       trim: true
     },
-
+qr:{type:String},
     // --- 2. O'lchov va Qadoq ---
     unit: {
       type: String,
