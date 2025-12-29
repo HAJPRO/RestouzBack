@@ -66,6 +66,7 @@ app.use("/api/v1/sale/products", require("./routes/sale/products/product.route.j
 app.use("/api/v1/sale/salepos", require("./routes/sale/salepos/salepos.route.js"));
 app.use("/api/v1/warehouses", require("./routes/warehouses/r-warehouse/warehouse.route.js"));
 app.use("/api/v1/warehouses/input", require("./routes/warehouses/input/input.route.js"));
+app.use("/api/v1/supply/counterparty", require("./routes/supply/counterparty/counterparty.route.js"));
 
 // Xatoliklarni ushlash
 app.use(errorMiddleware);
