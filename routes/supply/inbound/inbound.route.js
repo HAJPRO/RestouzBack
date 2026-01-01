@@ -19,11 +19,11 @@ router.post(
 
 // // 2. Barcha kirimlar ro'yxati (Filtrlar bilan)
 // // Ma'lumot olish bo'lgani uchun GET metodidan foydalanish professionalroq
-// router.get(
-//   "/all",
-//   authMiddleware, 
-//   SupplyInboundController.GetAll // Inbound controllerdan olinadi
-// );
+router.post(
+  "/all",
+  authMiddleware, 
+  SupplyInboundController.GetAll // Inbound controllerdan olinadi
+);
 
 // // 3. Bitta qabul hujjati tafsiloti (Detail)
 // router.get(

@@ -39,6 +39,21 @@ class InboundController {
     }
   }
 
+  async GetAll(req, res) {
+    try {
+      const inbound = await InboundService.getAllInbounds();
+      res.json({
+        success: true,
+        data: inbound
+      });
+    } catch (error) {
+      res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
   /**
    * Batafsil ko'rish
    * GET /api/warehouse/inbound/:id

@@ -61,12 +61,14 @@ async createInbound(data, userId) {
   /**
    * Barcha kirimlar ro'yxatini olish (Filtrlar bilan)
    */
-  async getAllInbounds(query = {}) {
-    return await Inbound.find(query)
+  async getAllInbounds() {
+    const inbounds = await Inbound.find()
       .populate('branchId', 'name')
-      .populate('supplierId', 'fullname')
-      .populate('receivedBy', 'username')
+      .populate('counterparty')
+      .populate('receivedBy')
       .sort({ createdAt: -1 });
+console.log(inbounds)
+      return inbounds
   }
 
   /**
