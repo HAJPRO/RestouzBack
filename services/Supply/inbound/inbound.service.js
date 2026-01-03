@@ -1,5 +1,6 @@
 const Inbound = require('../../../models/Supply/Inbound/inbound.model');
 const Product = require('../../../models/Sale/products/product.model');
+const Loboratory = require('../../../models/Laboratory/laboratory.model');
 
 class InboundService {
   /**
@@ -82,6 +83,50 @@ console.log(inbounds)
     if (!inbound) throw new Error("Kirim hujjati topilmadi");
     return inbound;
   }
+
+   async saveLabAnalysis(payload, userId) {
+  try {
+    const { inboundBatchIds, labResults, distribution, totalPhysicalVolume } = payload;
+
+    // 1. Yangi Laboratoriya hujjati yaratish (Laboratory Model)
+    const newAnalysis = new Loboratory({
+      inboundBatchIds,      // Birlashtirilgan partiyalar ID lari
+      results: labResults,  // fat, density, acidity, quality
+      distribution,         // { "Smetana 20%": 150, ... }
+      totalVolume: totalPhysicalVolume,
+      author: userId,       // Tahlilni o'tkazgan xodim
+      status: 'Accepted'
+    });
+
+    const savedAnalysis = await newAnalysis.save();
+
+    // 2. Tanlangan Inbound partiyalarini yangilash
+    // Har bir partiyaga labAnalysis ID sini biriktiramiz va statusini o'zgartiramiz
+    const updateBatches = inboundBatchIds.map(id => {
+      return Inbound.findByIdAndUpdate(id, {
+        $set: {
+          status: 'Accepted', // Kirim yakunlandi
+          labAnalysisId: savedAnalysis._id, // Laboratoriya xulosasiga havola
+          // Partiya ichidagi itemsga ham lab natijalarini nusxalash (ixtiyoriy)
+          // 'items.0.fat': labResults.fat,
+          // 'items.0.density': labResults.density,
+          // 'items.0.acidity': labResults.acidity,
+          // 'items.0.labStatus': 'Accepted'
+        }
+      });
+    });
+
+    await Promise.all(updateBatches);
+
+    return {
+      success: true,
+      message: "Laboratoriya tahlili saqlandi va partiyalar yangilandi",
+      analysisId: savedAnalysis._id
+    };
+  } catch (error) {
+    throw new Error(`Laboratoriya tahlilini saqlashda xato: ${error.message}`);
+  }
+}
 }
 
 module.exports = new InboundService();

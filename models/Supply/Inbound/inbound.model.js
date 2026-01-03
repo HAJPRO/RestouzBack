@@ -68,7 +68,7 @@ const SupplyInboundSchema = new mongoose.Schema({
   // 4. Ma'lumot va Status
   status: {
     type: String,
-    enum: ['Draft', 'Completed', 'Cancelled'],
+    enum: ['Accepted', 'Completed', 'Cancelled'],
     default: 'Completed'
   },
   description: String,

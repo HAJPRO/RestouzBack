@@ -24,7 +24,7 @@ router.post(
   authMiddleware, 
   SupplyInboundController.GetAll // Inbound controllerdan olinadi
 );
-
+router.post('/labanalysis', authMiddleware, SupplyInboundController.saveLabAnalysis);
 // // 3. Bitta qabul hujjati tafsiloti (Detail)
 // router.get(
 //   "/detail/:id",
