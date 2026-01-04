@@ -6,7 +6,13 @@ class LaboratoryAnaliticService {
   async GetAllAnalytics(query) {
   const data = await Laboratory.find()
       .populate("author", "fullname")
-      .populate("inboundBatchIds")
+     .populate({
+    path: 'inboundBatchIds',
+    populate: {
+      path: 'counterparty',
+      select: 'fullname phone' // Faqat kerakli maydonlarni ochamiz
+    }
+  })
       .sort({ createdAt: -1 });
 
     return {status : 200, data}

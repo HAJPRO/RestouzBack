@@ -259,7 +259,7 @@
         <div class="header-center">
             <h1>Tahlil Protokoli</h1>
             <div class="batch-wrapper">
-                <span class="batch-id">ID: <%= data._id %></span>
+                <span class="batch-id">№: <%= data.partyNumber %></span>
             </div>
         </div>
         <div style="text-align: right;">
@@ -350,12 +350,12 @@
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=<%= data._id %>" style="width: 55px; border: 4px solid var(--slate-50);" />
             <div style="font-size: 8px; color: var(--slate-500); line-height: 1.4;">
                 <strong>ERP Raqamli Identifikatsiya</strong><br/>
-                Hujjat: <%= data._id %><br/>
+                Hujjat: <%= data.partyNumber %><br/>
                 Generatsiya: <%= generatedAt %>
             </div>
         </div>
         <div style="text-align: right; font-size: 8px; color: var(--slate-400);">
-            Safy Milk Executive Protocol<br/>
+            Safymilk Executive Protocol<br/>
             © 2026 Production Intelligence System
         </div>
     </div>

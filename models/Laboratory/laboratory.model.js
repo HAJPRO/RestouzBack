@@ -1,5 +1,6 @@
 const { model, Schema } = require("mongoose");
 const LabAnalysisSchema = new Schema({
+  partyNumber : {type:String},
   // Birlashtirilgan partiyalar ID lari
   inboundBatchIds: [{
     type: Schema.Types.ObjectId,

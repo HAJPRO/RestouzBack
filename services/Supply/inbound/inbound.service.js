@@ -1,6 +1,8 @@
 const Inbound = require('../../../models/Supply/Inbound/inbound.model');
 const Product = require('../../../models/Sale/products/product.model');
 const Loboratory = require('../../../models/Laboratory/laboratory.model');
+const { generateUniqueLabNumber } = require('../../../utils/generateUniqueNumber');
+
 
 class InboundService {
   /**
@@ -87,9 +89,11 @@ console.log(inbounds)
    async saveLabAnalysis(payload, userId) {
   try {
     const { inboundBatchIds, labResults, distribution, totalPhysicalVolume } = payload;
+console.log(payload);
 
     // 1. Yangi Laboratoriya hujjati yaratish (Laboratory Model)
     const newAnalysis = new Loboratory({
+      partyNumber : await  generateUniqueLabNumber(),
       inboundBatchIds,      // Birlashtirilgan partiyalar ID lari
       results: labResults,  // fat, density, acidity, quality
       distribution,         // { "Smetana 20%": 150, ... }
