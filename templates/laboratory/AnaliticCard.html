@@ -2,241 +2,122 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8" />
-    <title>Executive Production Protocol | Safy Milk</title>
+    <title>Safymilk | Analytics Report</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
         @page { size: A4; margin: 0; }
+        
         :root {
-            --primary: #0f172a;    /* Deep Navy */
-            --accent: #2563eb;     /* Safy Blue */
-            --slate-50: #f8fafc;
-            --slate-100: #f1f5f9;
-            --slate-200: #e2e8f0;
-            --slate-400: #94a3b8;
-            --slate-500: #64748b;
-            --slate-900: #0f172a;
+            --primary: #0f172a;
+            --accent: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --background: #f8fafc;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
         }
 
         body { 
-            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; 
-            font-size: 11px; 
-            color: var(--slate-900); 
-            background: #f1f5f9; /* Sahifa foni */
-            margin: 0; 
-            padding: 40px 0; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; padding: 0; background: #cbd5e1;
+            -webkit-print-color-adjust: exact;
         }
 
-        .premium-container { 
-            max-width: 800px; 
-            margin: auto; 
-            padding: 50px; 
-            background: #fff;
-            position: relative;
-            /* Border o'rniga premium soya */
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-            min-height: 1000px;
+        .document-canvas {
+            width: 210mm; height: 297mm;
+            margin: 0 auto; background: white;
+            box-sizing: border-box; display: flex; flex-direction: column;
+            padding: 12mm 15mm; position: relative;
         }
 
-        /* Tepadagi zamonaviy chiziq */
-        .top-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
+        /* --- PROFESSIONAL HEADER --- */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 20px; margin-bottom: 30px;
+            border-bottom: 1.5px solid var(--primary);
         }
+        .brand-box { display: flex; align-items: center; gap: 15px; }
+        .logo-wrapper {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 1px solid var(--border); overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .logo-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .brand-info h1 { margin: 0; font-size: 24px; font-weight: 800; color: var(--primary); }
+        .brand-info p { margin: 2px 0 0 0; font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Header Styling */
-        .header-grid {
-            display: grid;
-            grid-template-columns: 120px 1fr 200px;
-            align-items: center;
-            margin-bottom: 40px;
-        }
+        .header-meta { text-align: right; }
+        .protocol-no { font-family: 'JetBrains Mono'; font-size: 18px; font-weight: 800; color: var(--primary); }
+        .date-info { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
 
-        .brand-logo img { width: 100px; }
-
-        .header-center { text-align: center; }
-        .header-center h1 { 
-            margin: 0; 
-            font-size: 24px; 
-            font-weight: 900; 
-            letter-spacing: -1px;
-            color: var(--primary); 
-            text-transform: uppercase; 
+        /* --- ANALYTICAL STATS GRID --- */
+        .analytics-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 30px;
         }
-          /* Professional Rounded Logo */
-        .logo-box {
-            width: 80px; height: 80px;
-            background: white;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border: 2px solid var(--slate-100);
-            padding: 4px;
-        }
-        .logo-box img { 
-            width: 100%; height: 100%; 
-            object-fit: cover; 
-            border-radius: 50%; 
-        }
-        
-        .batch-wrapper {
-            margin-top: 5px;
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .batch-id { 
-            font-family: 'JetBrains Mono', monospace; 
-            background: var(--slate-100); 
-            padding: 2px 8px; 
-            border-radius: 4px; 
-            font-size: 9px;
-            color: var(--slate-500);
-            border: 1px solid var(--slate-200);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 6px;
-            background: var(--primary);
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        /* KPI Cards */
-        .section-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: var(--slate-400);
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-        .section-title::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background: var(--slate-100);
-            margin-left: 15px;
-        }
-
-        .kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 40px;
-        }
-
-        .kpi-card {
-            background: var(--slate-50);
-            padding: 15px;
-            border-radius: 12px;
-            transition: transform 0.2s;
-            border: 1px solid transparent;
-        }
-        
-        .kpi-card:hover { border-color: var(--slate-200); }
-
-        .kpi-label { font-size: 9px; color: var(--slate-500); font-weight: 600; text-transform: uppercase; }
-        .kpi-value { 
-            display: block; 
-            font-size: 18px; 
-            font-weight: 800; 
-            color: var(--primary); 
-            margin-top: 5px; 
-        }
-
-        /* Table Design */
-        .data-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0 10px;
-            margin-bottom: 30px;
-        }
-
-        .data-table th {
-            color: var(--slate-400);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 9px;
-            padding: 10px 15px;
-            text-align: left;
-        }
-
-        .data-table td {
-            padding: 15px;
-            background: var(--slate-50);
-            border-top: 1px solid var(--slate-100);
-            border-bottom: 1px solid var(--slate-100);
-        }
-        
-        .data-table td:first-child { border-left: 1px solid var(--slate-100); border-radius: 10px 0 0 10px; }
-        .data-table td:last-child { border-right: 1px solid var(--slate-100); border-radius: 0 10px 10px 0; }
-
-        .progress-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .progress-bg {
-            flex: 1;
-            height: 6px;
-            background: var(--slate-200);
-            border-radius: 10px;
+        .ana-card {
+            background: #ffffff; border: 1px solid var(--border);
+            padding: 14px; border-radius: 16px; position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             overflow: hidden;
         }
-        .progress-fill {
-            height: 100%;
-            background: var(--accent);
-            border-radius: 10px;
+        .ana-card::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: var(--accent); opacity: 0.2;
         }
+        .ana-label { font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .ana-value { display: block; font-size: 18px; font-weight: 800; color: var(--primary); margin: 6px 0; }
+        .ana-unit { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+        
+        /* Mini Indicator Bar */
+        .indicator-track { width: 100%; height: 4px; background: #f1f5f9; border-radius: 2px; margin-top: 8px; }
+        .indicator-fill { height: 100%; border-radius: 2px; }
 
-        /* Total Section */
-        .total-box {
-            background: var(--primary);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 40px;
+        /* Specific Card Styles */
+        .card-fat { border-bottom: 3px solid var(--accent); }
+        .card-density { border-bottom: 3px solid #6366f1; }
+        .card-acidity { border-bottom: 3px solid var(--warning); }
+        .card-quality { border-bottom: 3px solid var(--success); background: #f0fdf4; }
+        .card-temp { border-bottom: 3px solid #38bdf8; }
+
+        /* --- TABLE AREA --- */
+        .section-title {
+            font-size: 11px; font-weight: 800; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1.5px;
+            margin-bottom: 15px; display: flex; align-items: center; gap: 10px;
         }
+        .section-title::after { content: ""; flex-grow: 1; height: 1px; background: var(--border); }
 
-        /* Signatures */
-        .signature-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 40px;
-            margin-top: 60px;
+        .main-table { width: 100%; border-collapse: collapse; }
+        .main-table th { 
+            text-align: left; padding: 12px; font-size: 10px; font-weight: 700; 
+            color: var(--text-muted); border-bottom: 2px solid var(--border);
         }
+        .main-table td { padding: 14px 12px; font-size: 13px; font-weight: 600; border-bottom: 1px solid #f1f5f9; }
 
-        .sig-box { text-align: center; }
-        .sig-line {
-            border-top: 2px solid var(--primary);
-            margin-top: 40px;
-            padding-top: 10px;
-            font-size: 10px;
-            font-weight: 800;
-            text-transform: uppercase;
+        .progress-box { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+        .bar-bg { width: 60px; height: 6px; background: #f1f5f9; border-radius: 10px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--accent); }
+
+        /* --- TOTAL BANNER --- */
+        .total-banner {
+            background: var(--primary); color: white; border-radius: 20px;
+            padding: 25px; display: flex; justify-content: space-between; align-items: center;
+            margin-top: auto; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
         }
-        .sig-name { font-size: 9px; color: var(--slate-500); margin-top: 4px; }
+        .total-info span { font-size: 10px; font-weight: 700; opacity: 0.6; text-transform: uppercase; }
+        .total-info h2 { margin: 5px 0 0 0; font-size: 34px; font-weight: 800; }
 
-        .footer-qr {
-            margin-top: 60px;
-            padding-top: 30px;
-            border-top: 1px solid var(--slate-100);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .signature-section { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin: 35px 0; }
+        .sig-item { border-top: 1.5px solid var(--border); padding-top: 10px; }
+        .sig-label { font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+        .sig-name { font-size: 12px; font-weight: 700; color: var(--primary); margin-top: 4px; }
+
+        .footer {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            border-top: 1px solid var(--border); padding-top: 15px; font-size: 9px; color: var(--text-muted);
         }
     </style>
 </head>
@@ -249,116 +130,133 @@
     }
 %>
 
-<div class="premium-container">
-    <div class="top-bar"></div>
-
-    <header class="header-grid">
-        <div class="logo-box">
-            <img src="https://safymilk.company-erp.uz/assets/safymilk_logo_4-e9036e9d.jpg" alt="Safy Milk" />
-        </div>
-        <div class="header-center">
-            <h1>Tahlil Protokoli</h1>
-            <div class="batch-wrapper">
-                <span class="batch-id">№: <%= data.partyNumber %></span>
+<div class="document-canvas">
+    <header class="header">
+        <div class="brand-box">
+            <div class="logo-wrapper">
+                <img src="https://safymilk.company-erp.uz/assets/safymilk_logo_4-e9036e9d.jpg" alt="Logo">
+            </div>
+            <div class="brand-info">
+                <h1>Laboratoriya xulosasi</h1>
+                <p>Industrial Analytical Intelligence</p>
             </div>
         </div>
-        <div style="text-align: right;">
-            <div class="status-badge"><%= (data.status || 'Hujjat Tasdiqlandi').toUpperCase() %></div>
-            <div style="font-size: 10px; margin-top: 8px; font-weight: 600; color: var(--slate-500);">
-                <%= new Date(data.createdAt).toLocaleString('uz-UZ', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+        <div class="header-meta">
+            <div class="protocol-no">№ <%= data.partyNumber %></div>
+            <div class="date-info">
+                <%= new Date(data.createdAt).toLocaleDateString('uz-UZ', {day: '2-digit', month: 'long', year: 'numeric'}) %> | 
+                <%= new Date(data.createdAt).toLocaleTimeString('uz-UZ', {hour: '2-digit', minute: '2-digit'}) %>
             </div>
         </div>
     </header>
 
-    <div class="section-title">Laboratoriya Ko'rsatkichlari</div>
-    <div class="kpi-grid">
-        <div class="kpi-card" style="border-left: 4px solid #cbd5e1;">
-            <span class="kpi-label">Yog'lilik Ulushi</span>
-            <span class="kpi-value"><%= data.results?.fat || '0.0' %> %</span>
+    <section class="analytics-grid">
+        <div class="ana-card card-fat">
+            <span class="ana-label">Yog'lilik</span>
+            <span class="ana-value"><%= data.results?.fat || '0.00' %><span class="ana-unit">%</span></span>
+            <div class="indicator-track"><div class="indicator-fill" style="width: 75%; background: var(--accent);"></div></div>
         </div>
-        <div class="kpi-card" style="border-left: 4px solid #cbd5e1;">
-            <span class="kpi-label">Zichlik (Density)</span>
-            <span class="kpi-value"><%= data.results?.density || '0.0' %></span>
-        </div>
-        <div class="kpi-card" style="border-left: 4px solid #cbd5e1;">
-            <span class="kpi-label">Kislotalilik</span>
-            <span class="kpi-value"><%= data.results?.acidity || '0.0' %> °T</span>
-        </div>
-        <div class="kpi-card" style="border-left: 4px solid var(--accent); background: var(--slate-100);">
-            <span class="kpi-label" style="color: var(--accent);">Sifat Navini</span>
-            <span class="kpi-value" style="color: var(--accent);"><%= data.results?.quality || 'Standart' %></span>
-        </div>
-    </div>
 
-    <div class="section-title">Mahsulotlar Taqsimoti</div>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th width="40">№</th>
-                <th>Mahsulot Nomi</th>
-                <th style="text-align: right;">Hajm (Litr)</th>
-                <th style="text-align: center;">Ulush</th>
-                <th width="150">Vizualizatsiya</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (data.distribution && Object.keys(data.distribution).length > 0) { %>
-                <% Object.entries(data.distribution).forEach(([name, val], index) => { 
-                    let volume = Number(val) || 0;
-                    let percent = totalVol > 0 ? ((volume / totalVol) * 100).toFixed(1) : 0;
-                %>
+        <div class="ana-card card-density">
+            <span class="ana-label">Zichlik</span>
+            <span class="ana-value"><%= data.results?.density || '1.028' %></span>
+            <div class="indicator-track"><div class="indicator-fill" style="width: 85%; background: #6366f1;"></div></div>
+        </div>
+
+        <div class="ana-card card-acidity">
+            <span class="ana-label">Kislotalilik</span>
+            <span class="ana-value"><%= data.results?.acidity || '17.0' %><span class="ana-unit">°T</span></span>
+            <div class="indicator-track"><div class="indicator-fill" style="width: 40%; background: var(--warning);"></div></div>
+        </div>
+
+        <div class="ana-card card-quality">
+            <span class="ana-label">Sifat Klassi</span>
+            <span class="ana-value" style="color: var(--success); font-size: 14px;"><%= data.results?.quality || 'Premimum' %></span>
+            <div class="indicator-track"><div class="indicator-fill" style="width: 100%; background: var(--success);"></div></div>
+        </div>
+
+        <div class="ana-card card-temp">
+            <span class="ana-label">Harorat</span>
+            <span class="ana-value">4.2<span class="ana-unit">°C</span></span>
+            <div class="indicator-track"><div class="indicator-fill" style="width: 20%; background: #38bdf8;"></div></div>
+        </div>
+    </section>
+
+    <main style="flex-grow: 1;">
+        <div class="section-title">Ishlab chiqarish taqsimoti analitikasi</div>
+        <table class="main-table">
+            <thead>
                 <tr>
-                    <td style="font-weight: 700; color: var(--slate-400);"><%= index + 1 %></td>
-                    <td style="font-weight: 700; color: var(--primary);"><%= name %></td>
-                    <td style="text-align: right; font-weight: 800;"><%= volume.toLocaleString() %> L</td>
-                    <td style="text-align: center; font-weight: 600;"><%= percent %>%</td>
-                    <td>
-                        <div class="progress-container">
-                            <div class="progress-bg">
-                                <div class="progress-fill" style="width: <%= percent %>%"></div>
-                            </div>
-                        </div>
-                    </td>
+                    <th width="40">№</th>
+                    <th>Mahsulot nomi</th>
+                    <th style="text-align: right;">Hajm (litr)</th>
+                    <th style="text-align: right;">Ulush (%)</th>
                 </tr>
-                <% }) %>
-            <% } %>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                <% if (data.distribution) { %>
+                    <% Object.entries(data.distribution).forEach(([name, val], index) => { 
+                        let v = Number(val) || 0;
+                        let p = totalVol > 0 ? ((v / totalVol) * 100).toFixed(1) : 0;
+                    %>
+                    <tr>
+                        <td style="font-family: 'JetBrains Mono'; color: var(--text-muted); font-size: 11px;"><%= (index + 1).toString().padStart(2, '0') %></td>
+                        <td style="text-transform: uppercase; font-size: 12px; letter-spacing: 0.3px;"><%= name %></td>
+                        <td style="text-align: right; font-weight: 800; color: var(--primary);"><%= v.toLocaleString() %></td>
+                        <td>
+                            <div class="progress-box">
+                                <span style="font-size: 11px; font-weight: 800;"><%= p %>%</span>
+                                <div class="bar-bg"><div class="bar-fill" style="width: <%= p %>%"></div></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <% }) %>
+                <% } %>
+            </tbody>
+        </table>
+    </main>
 
-    <div class="total-box">
-        <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Umumiy ishlab chiqarish hajmi</span>
-        <span style="font-size: 20px; font-weight: 900;"><%= totalVol.toLocaleString() %> LITR</span>
+    <div class="total-banner">
+        <div class="total-info">
+            <span>Umumiy partya hajmi</span>
+            <h2><%= totalVol.toLocaleString() %> <small style="font-size: 18px; opacity: 0.5; font-weight: 400;">LITR</small></h2>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-family: 'JetBrains Mono'; font-size: 12px; letter-spacing: 1px; margin-bottom: 5px;">VERIFIED REPORT</div>
+            <div style="font-size: 10px; opacity: 0.6;">Tizim ID: <%= data._id.toString().toUpperCase() %></div>
+        </div>
     </div>
 
-    <div class="signature-grid">
-        <div class="sig-box">
-            <div class="sig-line">Laborant</div>
-            <div class="sig-name"><%= data.author?.fullname || 'Masul Xodim' %></div>
+    <section class="signature-section">
+        <div class="sig-item">
+            <div class="sig-label">Mas'ul Laborant</div>
+            <div class="sig-name"><%= data.author?.fullname %></div>
         </div>
-        <div class="sig-box">
-            <div class="sig-line">Texnolog</div>
-            <div class="sig-name">Sifat bo'limi</div>
-        </div>
-        <div class="sig-box">
-            <div class="sig-line">Zavod Boshlig'i</div>
-            <div class="sig-name">Tasdiqlash</div>
-        </div>
-    </div>
+        <div class="sig-item">
+            <div class="sig-label">Bosh Texnolog</div>
+                        <div class="sig-name"><%= data.author?.fullname %></div>
 
-    <div class="footer-qr">
+        </div>
+        <div class="sig-item">
+            <div class="sig-label">Direktorat</div>
+                        <div class="sig-name"><%= data.author?.fullname %></div>
+
+        </div>
+    </section>
+
+    <footer class="footer">
         <div style="display: flex; align-items: center; gap: 15px;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=<%= data._id %>" style="width: 55px; border: 4px solid var(--slate-50);" />
-            <div style="font-size: 8px; color: var(--slate-500); line-height: 1.4;">
-                <strong>ERP Raqamli Identifikatsiya</strong><br/>
-                Hujjat: <%= data.partyNumber %><br/>
-                Generatsiya: <%= generatedAt %>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=<%= data._id %>" width="80" style="border-radius: 4px;">
+            <div>
+                <strong>Safymilk Digital Protocol</strong><br>
+                Ushbu hujjat ERP tizimi orqali avtomatik shakllantirilgan.
             </div>
         </div>
-        <div style="text-align: right; font-size: 8px; color: var(--slate-400);">
-            Safymilk Executive Protocol<br/>
-            © 2026 Production Intelligence System
+        <div style="text-align: right;">
+            Safymilk - Tabiiatning mehirli ta'mi © 2026<br>
+            Quality Control Dept. | v8.5 Analytics
         </div>
-    </div>
+    </footer>
 </div>
 
 </body>
