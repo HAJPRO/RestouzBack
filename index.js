@@ -7,7 +7,23 @@ const mongoose = require("mongoose");
 const errorMiddleware = require("./middlewares/error.middleware.js");
 
 const app = express();
+// JSON ma'lumotlar uchun limitni 10MB ga oshirish (Base64 rasmlar uchun yetarli)
+// Limitni oshirish
+app.use(express.json({ limit: '10mb' }));
 
+// Hajm oshib ketganda xatoni JSON formatda qaytarish
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({
+      status: "413",
+      msg: "Yuborilgan rasm hajmi juda katta! Maksimal limit: 10MB"
+    });
+  }
+  next();
+});
+
+// URL-encoded ma'lumotlar uchun ham limitni oshirish
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // ------------------ MUHITNI TEKSHIRISH ------------------
 // .trim() probellardan tozalash uchun kerak
 const joriyMuhit = process.env.NODE_ENV ? process.env.NODE_ENV.trim() : "development";

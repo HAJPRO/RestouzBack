@@ -2,129 +2,167 @@ const RawMaterial = require('../../../models/Supply/rawmaterial/rawmaterial.mode
 const { generateQRCode } = require('../../../utils/generater');
 
 class RawMaterialService {
-    // async create(data) {
-    //     return await RawMaterial.create(data);
-    // }
-async create(data) {
+    /**
+     * Yaratish va Tahrirlash mantiqi
+     * @param {Object} data - { action: "create/update", model: { ... } }
+     * @param {String} userId - Amallarni bajargan foydalanuvchi IDsi
+     */
+async create(data, userId) {
     const { action, model } = data;
 
     try {
-      // --- 1. YARATISH (CREATE) ---
-      if (action === "create") {
-        // Dublikatlarni tekshirish (isActive: true bo'lganlar orasidan)
-        const materialExists = await RawMaterial.exists({
-          $and: [
-            { isActive: true },
-            { $or: [{ name: model.name }, { code: model.code }] }
-          ]
-        });
+        // --- 1. RASM HAJMINI VA FORMATINI TEKSHIRISH ---
+        if (model.image && typeof model.image === 'string' && model.image.startsWith('data:image')) {
+            // Base64 dan taxminiy hajmni (byte) hisoblash
+            const base64Length = model.image.length;
+            const sizeInBytes = (base64Length * 3) / 4;
+            const sizeInMB = sizeInBytes / (1024 * 1024);
 
-        if (materialExists) {
-          return { status: "400", msg: "Bunday xomashyo nomi yoki kodi allaqachon mavjud!" };
+            // 5MB limit (Baza xavfsizligi va tezligi uchun)
+            if (sizeInMB > 5) {
+                return { 
+                    status: "400", 
+                    msg: `Rasm hajmi juda katta (${sizeInMB.toFixed(2)} MB). Iltimos, 5MB dan kichik rasm yuklang.` 
+                };
+            }
         }
 
-        // QR kod generatsiya qilish
-        if (model.code) {
-          model.qr = await generateQRCode(model.code);
+        // --- 2. YARATISH (CREATE) MANTIQI ---
+        if (action === "create") {
+            // Dublikat tekshiruvi: Nomi yoki Kodi bo'yicha
+            const materialExists = await RawMaterial.exists({
+                isActive: true,
+                $or: [
+                    { name: { $regex: new RegExp(`^${model.name}$`, "i") } }, // Registrga qaramasdan tekshirish
+                    { code: model.code }
+                ]
+            });
+
+            if (materialExists) {
+                return { status: "400", msg: "Bunday xomashyo nomi yoki kodi tizimda allaqachon mavjud!" };
+            }
+
+            // QR kod yaratish
+            if (model.code) {
+                model.qr = await generateQRCode(model.code);
+            }
+
+            // Ma'lumotlarni sanitizatsiya qilish (tozalash)
+            const sanitizedData = {
+                ...model,
+                isActive: true,
+                createdBy: userId,
+                image: model.image || null,
+                costPrice: Math.abs(Number(model.costPrice) || 0),
+                totalStock: Math.max(0, Number(model.totalStock) || 0),
+                
+                // Turi bo'yicha texnik maydonlarni ajratish
+                volume: model.type === 'pkg_plastic' ? Number(model.volume) : null,
+                volumeUnit: model.type === 'pkg_plastic' ? model.volumeUnit : null,
+                fatContent: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.fatContent) : null,
+                density: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.density) : null,
+                temperature: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.temperature) : null
+            };
+
+            const newMaterial = new RawMaterial(sanitizedData);
+            const saved = await newMaterial.save();
+            
+            return { status: "200", msg: "Yangi xomashyo muvaffaqiyatli saqlandi!", data: saved };
         }
 
-        // Ma'lumotlarni sanitarizatsiya qilish (manfiy sonlarni oldini olish)
-        const newMaterial = new RawMaterial({
-          ...model,
-        //   costPrice: Math.abs(model.costPrice || 0),
-        //   fatContent: Math.max(0, model.fatContent || 0),
-          isActive: true
-        });
+        // --- 3. TAHRIRLASH (UPDATE) MANTIQI ---
+        if (action === "update") {
+            const { _id, ...updateData } = model;
 
-        const saved = await newMaterial.save();
-        
-        return { 
-          status: "200", 
-          msg: "Xomashyo muvaffaqiyatli qo'shildi!", 
-          data: saved 
-        };
-      }
+            if (!_id) return { status: "400", msg: "ID ko'rsatilmagan!" };
 
-      // --- 2. TAHRIRLASH (UPDATE) ---
-      if (action === "update") {
-        const { _id, ...updateData } = model;
+            const currentMaterial = await RawMaterial.findById(_id);
+            if (!currentMaterial) {
+                return { status: "404", msg: "Tahrirlanayotgan resurs topilmadi!" };
+            }
 
-        // Xomashyo mavjudligini tekshirish
-        const currentMaterial = await RawMaterial.findById(_id);
-        if (!currentMaterial) {
-          return { status: "404", msg: "O'zgartirish uchun xomashyo topilmadi!" };
+            // Tahrirlashda dublikat tekshiruvi (o'zidan tashqari boshqa resurslar bilan)
+            const duplicateCheck = await RawMaterial.exists({
+                _id: { $ne: _id },
+                isActive: true,
+                $or: [
+                    { name: { $regex: new RegExp(`^${updateData.name}$`, "i") } },
+                    { code: updateData.code }
+                ]
+            });
+
+            if (duplicateCheck) {
+                return { status: "400", msg: "Yangi nom yoki kod boshqa resursda ishlatilmoqda!" };
+            }
+
+            // QR kodni yangilash (kod o'zgargan bo'lsa)
+            if (updateData.code && updateData.code !== currentMaterial.code) {
+                updateData.qr = await generateQRCode(updateData.code);
+            }
+
+            // Agar yangi rasm kelmasa, eskisini saqlab qolamiz
+            if (!updateData.image) {
+                delete updateData.image; 
+            }
+
+            // Sonli qiymatlarni tahrirlash paytida ham tozalash
+            if (updateData.costPrice !== undefined) updateData.costPrice = Math.abs(Number(updateData.costPrice));
+            if (updateData.totalStock !== undefined) updateData.totalStock = Math.max(0, Number(updateData.totalStock));
+
+            const updated = await RawMaterial.findByIdAndUpdate(
+                _id, 
+                { $set: updateData }, 
+                { new: true, runValidators: true }
+            );
+
+            return { status: "200", msg: "Ma'lumotlar yangilandi!", data: updated };
         }
-
-        // Agar kod o'zgargan bo'lsa, yangi QR kod yaratish va dublikatni tekshirish
-        if (updateData.code && updateData.code !== currentMaterial.code) {
-          const codeExists = await RawMaterial.exists({
-            _id: { $ne: _id },
-            code: updateData.code,
-            isActive: true
-          });
-
-          if (codeExists) {
-            return { status: "400", msg: "Bu kod boshqa xomashyoga biriktirilgan!" };
-          }
-
-          // Yangi kod uchun QR generatsiya
-          updateData.qr = await generateQRCode(updateData.code);
-        }
-
-        // Ma'lumotlarni yangilash
-        const updated = await RawMaterial.findByIdAndUpdate(
-          _id, 
-          { $set: updateData }, 
-          { new: true, runValidators: true }
-        );
-
-        return { 
-          status: "200", 
-          msg: "Xomashyo ma'lumotlari yangilandi!", 
-          data: updated 
-        };
-      }
-
-      return { status: "400", msg: "Noto'g'ri amal turi (action error)" };
 
     } catch (error) {
-      console.error("Error in RawMaterial Save:", error);
-      
-      // Mongoose unique error handling
-      if (error.code === 11000) {
-        return { status: "400", msg: "Xato: Identifikatsiya kodi takrorlanmas bo'lishi shart!" };
-      }
+        console.error("RawMaterial Service Error:", error);
 
-      throw new Error("Xomashyoni saqlashda texnik xatolik: " + error.message);
+        // Mongoose validation xatolarini tutish
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(val => val.message);
+            return { status: "400", msg: "Validatsiya xatosi!", error: messages };
+        }
+
+        // Boshqa kutilmagan xatolar
+        return { 
+            status: "500", 
+            msg: "Serverda kutilmagan xatolik yuz berdi!", 
+            error: error.message 
+        };
     }
-  }
+}
+
+    // 3. Hammasini olish
     async getAll(filter = {}) {
-        return await RawMaterial.find({ ...filter, isActive: true }).sort({ createdAt: -1 });
+        try {
+            return await RawMaterial.find({ ...filter, isActive: true })
+                .sort({ createdAt: -1 })
+                .lean();
+        } catch (error) {
+            throw new Error("Ma'lumotlarni olishda xatolik: " + error.message);
+        }
     }
 
+    // 4. Bitta ID bo'yicha olish
     async getById(id) {
-        return await RawMaterial.findById(id);
+        return await RawMaterial.findOne({ _id: id, isActive: true }).lean();
     }
 
-    async getByCode(code) {
-        return await RawMaterial.findOne({ code, isActive: true });
-    }
-
-    async update(id, data) {
-        return await RawMaterial.findByIdAndUpdate(id, data, { new: true });
-    }
-
+    // 5. Arxivlash (Soft Delete)
     async delete(id) {
-        return await RawMaterial.findByIdAndUpdate(id, { isActive: false });
-    }
-
-    // Ombor qoldig'ini yangilash (Kirim/Chiqim uchun mantiq)
-    async updateStock(id, qty) {
-        return await RawMaterial.findByIdAndUpdate(
-            id, 
-            { $inc: { totalStock: qty } }, 
-            { new: true }
-        );
+        try {
+            return await RawMaterial.findByIdAndUpdate(
+                id, 
+                { isActive: false }, 
+                { new: true }
+            );
+        } catch (error) {
+            throw new Error("O'chirishda xatolik yuz berdi");
+        }
     }
 }
 

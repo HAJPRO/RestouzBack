@@ -6,7 +6,7 @@ const onlyAdminAccess = require("../../../middlewares/admin.middleware.js");
 const RawmaterialController = require('../../../controllers/supply/rawmaterial/rawmaterial.controller.js');
 
 // Siz yuborgan frontend andozaga mos endpointlar
-router.post('/create', RawmaterialController.createRawMaterial);
+router.post('/create', RawmaterialController.saveMaterial);
 router.post('/all', RawmaterialController.getAllMaterials);
 router.post('/detail', RawmaterialController.getDetail);
 router.post('/delete', RawmaterialController.deleteMaterial);
