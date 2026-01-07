@@ -70,7 +70,6 @@ async createInbound(data, userId) {
       .populate('counterparty')
       .populate('receivedBy')
       .sort({ createdAt: -1 });
-console.log(inbounds)
       return inbounds
   }
 
@@ -89,7 +88,6 @@ console.log(inbounds)
    async saveLabAnalysis(payload, userId) {
   try {
     const { inboundBatchIds, labResults, distribution, totalPhysicalVolume } = payload;
-console.log(payload);
 
     // 1. Yangi Laboratoriya hujjati yaratish (Laboratory Model)
     const newAnalysis = new Loboratory({
