@@ -86,7 +86,12 @@ app.use("/api/v1/supply/counterparty", require("./routes/supply/counterparty/cou
 app.use("/api/v1/supply/inbound", require("./routes/supply/inbound/inbound.route.js"));
 app.use("/api/v1/supply/rawmaterial", require("./routes/supply/rawmaterial/rawmaterial.route.js"));
 app.use("/api/v1/supply/accessories", require("./routes/supply/accessories/accessory.route.js"));
+app.use("/api/v1/supply/accessories/inbound", require("./routes/supply/accessories/inputinbound.route.js"));
 app.use("/api/v1/laboratory/analitic", require("./routes/laboratory/analitic/analitic.route.js"));
+
+///settings
+app.use("/api/v1/settings/printer/template", require("./routes/settings/printer/pricePrinter.route.js"));
+
 
 // Xatoliklarni ushlash
 app.use(errorMiddleware);
