@@ -87,6 +87,18 @@ async GetAllPrinter(req, res) {
       });
     }
   }
+
+  async sendToPrintBulk(req, res) {
+    try {
+      const result = await TemplateService.sendToPrintBulk(req.body);
+      res.json(result);
+    } catch (error) {
+      res.json({
+        success: false,
+        // message: error.message
+      });
+    }
+  }
   
 }
 

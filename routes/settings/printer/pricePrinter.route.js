@@ -22,5 +22,6 @@ router.post('/delete',authMiddleware, TemplateController.Delete);
 
 //Printer config
 router.post('/printer_all',authMiddleware, TemplateController.GetAllPrinter);
+router.post('/printing',authMiddleware, TemplateController.sendToPrintBulk);
 
 module.exports = router;
