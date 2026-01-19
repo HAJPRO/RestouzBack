@@ -49,35 +49,21 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS sozlamalari
-// const allowedOrigins = [
-//   "https://safymilk.company-erp.uz",
-//   "http://localhost:5173"
-// ];
-// const allowedOrigins = 
-//   {origin: true, // Kelayotgan har qanday origin (capacitor://localhost kabi) ga ruxsat beradi
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],}
- 
+const allowedOrigins = [
+  "https://safymilk.company-erp.uz",
+  "http://localhost:5173"
+];
 
-// const corsOptions = {
-//   origin: function (origin, callback) {
-//     // Lokal rejimda yoki ruxsat etilgan domen bo'lsa ruxsat berish
-//     if (!origin || !isProd || allowedOrigins.includes(origin)) {
-//       callback(null, true);
-//     } else {
-//       console.error(`CORS rad etildi: ${origin}`);
-//       callback(new Error("CORS: Ruxsat etilmagan domen"));
-//     }
-//   },
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//   allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization']
-// };
-
-// app.use(cors(corsOptions));
-// CORS uchun juda sodda va mobil ilovaga mos sozlama
 const corsOptions = {
-  origin: true, // Kelayotgan har qanday origin (mobil ilova, localhost, domen) ga ruxsat beradi
+  origin: function (origin, callback) {
+    // Lokal rejimda yoki ruxsat etilgan domen bo'lsa ruxsat berish
+    if (!origin || !isProd || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error(`CORS rad etildi: ${origin}`);
+      callback(new Error("CORS: Ruxsat etilmagan domen"));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization']
