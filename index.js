@@ -1,12 +1,22 @@
 require("dotenv").config(); // 1. Har doim birinchi qatorda bo'lishi shart
-const express = require("express");
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { 
+        origin: "*", // Agent va Frontend ulanishi uchun hamma yo'nalishga ruxsat
+        methods: ["GET", "POST"]
+    },
+    transports: ['websocket', 'polling'] 
+  })// Barqaror ulanish uchun });
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const mongoose = require("mongoose");
 const errorMiddleware = require("./middlewares/error.middleware.js");
 
-const app = express();
 // JSON ma'lumotlar uchun limitni 10MB ga oshirish (Base64 rasmlar uchun yetarli)
 // Limitni oshirish
 app.use(express.json({ limit: '10mb' }));
@@ -108,7 +118,7 @@ const START = async () => {
     }); 
     console.log("✅ DB ga ulanish muvaffaqiyatli");
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server ${isProd ? 'SERVERDA (PROD)' : 'LOKALDA (DEV)'} ishga tushdi`);
       console.log(`🔗 Bazaviy URL: ${process.env.BASE_URL}`);
       console.log(`📡 Port: ${PORT}`);
@@ -122,5 +132,40 @@ const START = async () => {
 if (require.main === module) {
     START();
 }
+
+
+//
+
+io.on("connection", (socket) => {
+    console.log("Yangi socket ulanishi:", socket.id);
+
+    // Har qanday mijoz (Agent yoki Frontend) xonaga kirishi uchun
+    socket.on("AGENT:JOIN", (storeId) => {
+        socket.join(storeId);
+        console.log(`🏠 ROOM-GA KIRILDI: "${storeId}" (Socket: ${socket.id})`);
+    });
+
+    socket.on("AGENT:PRINTER_LIST", (data) => {
+        const roomName = String(data.storeId); 
+    console.log(`🖨️ Printerlar yuborilmoqda. Xona: ${roomName}`,data);
+    
+    io.to(roomName).emit("FRONTEND:UPDATE_PRINTERS", data.printers);
+    });
+
+    socket.on("SERVER:GET_PRINTERS", (data) => {
+        console.log(`🔍 Frontend printerlarni so'rayapti: ${data.storeId}`);
+        // Agentga so'rovni yuborish
+        io.to(data.storeId).emit("SERVER:GET_PRINTERS");
+    });
+
+    socket.on("FRONTEND:SEND_PRINT", (data) => {
+        console.log(`📄 Chop etish buyrug'i: ${data.storeId}`);
+        io.to(data.storeId).emit("SERVER:PRINT_LABEL", data);
+    });
+
+    socket.on("AGENT:PRINT_STATUS", (data) => {
+        io.to(data.storeId).emit("FRONTEND:PRINT_RESULT", data);
+    });
+});
 
 module.exports = app;
