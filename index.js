@@ -49,10 +49,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS sozlamalari
-const allowedOrigins = [
-  "https://safymilk.company-erp.uz",
-  "http://localhost:5173"
-];
+// const allowedOrigins = [
+//   "https://safymilk.company-erp.uz",
+//   "http://localhost:5173"
+// ];
+const allowedOrigins = 
+  {origin: true, // Har qanday kelayotgan origin-ga ruxsat berish
+  credentials: true}
+ 
 
 const corsOptions = {
   origin: function (origin, callback) {
