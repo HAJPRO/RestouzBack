@@ -14,6 +14,7 @@ const SaleHistorySchema = new mongoose.Schema({
   }],
   totalAmount: {type:String}, // Jami summa
   paymentType: { type: String, default: 'cash' },
+  mixedDetails :{type:Array,default:[]},
   branchId: {type:String},
   author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },

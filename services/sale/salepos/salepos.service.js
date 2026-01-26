@@ -80,6 +80,7 @@ async Create(data) {
       totalAmount: totalSaleAmount,
       branchId: payload.branchId,
       paymentType: payload.paymentType,
+      mixedDetails : payload.mixedDetails,
       customerId: payload.customerId || null,
       driverId: payload.driverId || null,
       author : author,

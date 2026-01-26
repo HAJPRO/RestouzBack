@@ -26,6 +26,7 @@ const OrderSchema = new Schema(
     },
     orderNumber: { type: String, required: true, unique: true },
     totalAmount: { type: Number, required: true },
+    mixedDetails :{type:Array,default:[]},
     status: {
       type: String,
       enum: [
