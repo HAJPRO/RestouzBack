@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            /* config.widthMm kelmasa, standart 58mm bo'ladi */
+            --w: <%= (typeof config !== 'undefined' && config.widthMm) ? config.widthMm : 58 %>mm;
+        }
+
+        @page { 
+            margin: 0; 
+            size: var(--w) auto; 
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color: #000;
+            font-size: 10px;
+        }
+
+        .receipt-canvas {
+            width: var(--w);
+            padding: 4mm 2mm; 
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .flex { display: flex; justify-content: space-between; align-items: flex-start; }
+        .text-center { text-align: center; }
+        .border-y-dotted { border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 3px 0; margin: 5px 0; }
+        .logo { max-width: 70%; display: block; margin: 0 auto 8px; filter: grayscale(1); }
+        .qr-code { width: 30mm; height: 30mm; display: block; margin: 8px auto; border: 1px solid #000; }
+        .hr-double { border-top: 3px double #000; margin: 5px 0; }
+        .hr-dashed { border-top: 1px dashed #000; margin: 8px 0; }
+    </style>
+</head>
+<body>
+
+<div class="receipt-canvas">
+    
+    <% if (typeof config !== 'undefined' && config.logo) { %>
+        <img src="<%= config.logo %>" class="logo">
+    <% } %>
+
+    <div class="text-center">
+        <div style="font-size: <%= (typeof params !== 'undefined' && params.header) ? params.header.value : 14 %>px; 
+                    font-weight: <%= (typeof params !== 'undefined' && params.header) ? params.header.weight : 'bold' %>; 
+                    letter-spacing: <%= (typeof params !== 'undefined' && params.header) ? params.header.spacing / 1000 : 0 %>px; 
+                    line-height: 1.1;">
+            <%= (typeof config !== 'undefined') ? config.companyName : 'SAVDO MARKAZI' %>
+        </div>
+        <% if (typeof config !== 'undefined' && config.showAddress) { %>
+            <div style="font-size: <%= (typeof params !== 'undefined' && params.info) ? params.info.value : 9 %>px; opacity: 0.8; font-style: italic; margin-top: 2px;">
+                <%= config.address || 'Manzil ko\'rsatilmadi' %>
+            </div>
+        <% } %>
+    </div>
+
+    <% if (typeof config !== 'undefined' && config.showStaffInfo) { %>
+    <div class="border-y-dotted" style="font-size: <%= (typeof params !== 'undefined' && params.meta) ? params.meta.value : 9 %>px;">
+        <div class="flex">
+            <span>Chek: <%= config.chekRaqami || '000001' %></span>
+            <span><%= config.kassaNomi || 'Kassa 1' %></span>
+        </div>
+        <div style="font-size: 0.9em;">Sana: <%= (typeof currentDateTime !== 'undefined') ? currentDateTime : new Date().toLocaleString() %></div>
+        <div class="flex">
+            <span>Kassir:</span>
+            <strong><%= config.kassirName || 'Admin' %></strong>
+        </div>
+    </div>
+    <% } %>
+
+    <div style="font-size: <%= (typeof params !== 'undefined' && params.products) ? params.products.value : 10 %>px;">
+        <div class="flex" style="font-weight: bold; border-bottom: 1px solid #000; margin-bottom: 4px;">
+            <span>Nomi</span>
+            <span>Summa</span>
+        </div>
+        
+        <% if (typeof items !== 'undefined' && items.length > 0) { %>
+            <% items.forEach(function(item) { %>
+                <div class="flex" style="margin-bottom: 2px;">
+                    <span style="flex: 1; padding-right: 4px;"><%= item.name %></span>
+                    <span style="white-space: nowrap;"><%= (item.totalPrice || 0).toLocaleString() %></span>
+                </div>
+                <div style="font-size: 0.85em; opacity: 0.7; margin-bottom: 4px;">
+                    <%= item.qty %> x <%= (item.price || 0).toLocaleString() %>
+                </div>
+            <% }); %>
+        <% } else { %>
+            <div class="text-center opacity-50">Mahsulotlar mavjud emas</div>
+        <% } %>
+
+        <% if (typeof config !== 'undefined' && config.showServiceFee) { %>
+            <div class="flex italic" style="margin-top: 4px;">
+                <span>Xizmat (<%= config.serviceFeePercent || 0 %>%):</span>
+                <span>+<%= (typeof serviceFeeAmount !== 'undefined' ? serviceFeeAmount : 0).toLocaleString() %></span>
+            </div>
+        <% } %>
+        
+        <% if (typeof config !== 'undefined' && config.showDiscount) { %>
+            <div class="flex" style="font-weight: bold;">
+                <span>Chegirma:</span>
+                <span>-<%= (config.discountSum || 0).toLocaleString() %></span>
+            </div>
+        <% } %>
+    </div>
+
+    <div class="hr-double"></div>
+    <div class="flex" style="font-size: <%= (typeof params !== 'undefined' && params.total) ? params.total.value : 14 %>px; font-weight: bold;">
+        <span>JAMI:</span>
+        <span><%= (typeof finalTotal !== 'undefined' ? finalTotal : 0).toLocaleString() %> UZS</span>
+    </div>
+
+    <% if (typeof config !== 'undefined' && config.showKashback) { %>
+        <div class="flex" style="font-size: 9px; background: #eee; padding: 2px; margin-top: 4px;">
+            <span>KASHBEK:</span>
+            <span>+<%= (typeof kashbackAmount !== 'undefined' ? kashbackAmount : 0).toLocaleString() %></span>
+        </div>
+    <% } %>
+
+    <div class="hr-dashed"></div>
+    <div class="text-center" style="font-size: <%= (typeof params !== 'undefined' && params.greeting) ? params.greeting.value : 10 %>px; font-weight: <%= (typeof params !== 'undefined' && params.greeting) ? params.greeting.weight : 'normal' %>;">
+        <%= (typeof config !== 'undefined') ? (config.welcomeMessage || 'Xaridingiz uchun rahmat!') : 'Xaridingiz uchun rahmat!' %>
+    </div>
+
+    <% if (typeof config !== 'undefined' && config.showFiscalQr) { %>
+    <div style="margin-top: 10px; font-size: <%= (typeof params !== 'undefined' && params.fiscal) ? params.fiscal.value : 8 %>px; opacity: 0.8;">
+        <div class="flex"><span>FM:</span><span>VG298430011007</span></div>
+        <div class="flex"><span>FK:</span><span>931371327789</span></div>
+        <% if (config.fiscalQr) { %>
+            <img src="<%= config.fiscalQr %>" class="qr-code">
+        <% } %>
+    </div>
+    <% } %>
+
+</div>
+
+</body>
+</html>

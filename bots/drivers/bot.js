@@ -9,7 +9,7 @@ if (!TG_TOKEN_ORDER) {
   process.exit(1);
 }
 const isProd = process.env.NODE_ENV === "production"; // yoki boshqa flag u7w7w
-const bot = new TG_BOT(TG_TOKEN_ORDER, { polling: false });
+const bot = new TG_BOT(TG_TOKEN_ORDER, { polling: true });
 
 // Polling error handler
 bot.on("polling_error", (error) => {
