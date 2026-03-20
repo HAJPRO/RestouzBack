@@ -17,7 +17,7 @@ class ProductManagementController {
         productData.image = req.file.path; 
       }
 
-      const result = await ProductService.create(productData, req.user.id);
+      const result = await ProductService.create(req,productData, req.user.id);
       
       if (!result.success) {
         return res.status(400).json(result);
@@ -42,7 +42,7 @@ class ProductManagementController {
         updateData.image = req.file.path;
       }
 
-      const result = await ProductService.update(id, updateData);
+      const result = await ProductService.update(req,id, updateData);
 
       if (!result.success) {
         return res.status(404).json(result);
@@ -59,7 +59,7 @@ class ProductManagementController {
    */
   async getAll(req, res, next) {
     try {
-      const result = await ProductService.getAll(req.query);
+      const result = await ProductService.getAll(req,req.query);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -72,7 +72,7 @@ class ProductManagementController {
   async getOne(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await ProductService.getOne(id);
+      const result = await ProductService.getOne(req,id);
 
       if (!result.success) {
         return res.status(404).json(result);
@@ -90,7 +90,7 @@ class ProductManagementController {
   async delete(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await ProductService.delete(id);
+      const result = await ProductService.delete(req,id);
 
       if (!result.success) {
         return res.status(404).json(result);
@@ -107,7 +107,7 @@ class ProductManagementController {
    */
   async handleExcelExport(req, res) {
     try {
-      const result = await ProductService.handleExcelExport(req.body);
+      const result = await ProductService.handleExcelExport(req,req.body);
       return sendExcelResponse(res, result);
     } catch (error) {
       console.error("Excel Export Error:", error.message);

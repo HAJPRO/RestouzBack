@@ -22,4 +22,4 @@ const AccessoriesSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Accessory', AccessoriesSchema);
+module.exports =  AccessoriesSchema;

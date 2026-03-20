@@ -2,7 +2,7 @@
 
   const userSchema = new Schema(
     {
-
+      companyCode: { type: String },
       department: { type: String },
       isActivated: { type: Boolean, default: false },
       chatId: {
@@ -189,4 +189,4 @@
     },
     { timestamps: true }
   );
-  module.exports = model("User", userSchema);
+  module.exports = userSchema;

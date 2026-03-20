@@ -27,6 +27,7 @@ module.exports = class UserDto {
   completedOrders;
   blockedUntil;
   notes;
+  companyCode
 
   constructor(model) {
     this.id = model._id;
@@ -55,6 +56,7 @@ module.exports = class UserDto {
     this.completedOrders = model.completedOrders;
     this.blockedUntil = model.blockedUntil;
     this.notes = model.notes;
+    this.companyCode = model.companyCode;
 
     // --- ROLES: ID-lar massivini 'value'lar massiviga aylantirish ---
     this.roles = Array.isArray(model.roles)

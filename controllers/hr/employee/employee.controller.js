@@ -2,7 +2,7 @@ const EmployeeManagmentService = require("../../../services/HR/employee/employee
 class EmployeeManagmentController {
     async Create(req, res, next) {
         try {
-            const data = await EmployeeManagmentService.Create(req.body);
+            const data = await EmployeeManagmentService.Create(req,req.body);
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -10,7 +10,7 @@ class EmployeeManagmentController {
     }
     async GetAll(req, res, next) {
         try {
-            const data = await EmployeeManagmentService.GetAll(req.body);
+            const data = await EmployeeManagmentService.GetAll(req,req.body);
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -18,7 +18,7 @@ class EmployeeManagmentController {
     }
     async DeleteById(req, res, next) {
         try {
-            const data = await EmployeeManagmentService.DeleteById(req.body);
+            const data = await EmployeeManagmentService.DeleteById(req,req.body);
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -27,7 +27,7 @@ class EmployeeManagmentController {
     }
     async GetById(req, res, next) {
         try {
-            const data = await EmployeeManagmentService.GetById(req.body);
+            const data = await EmployeeManagmentService.GetById(req,req.body);
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -36,7 +36,7 @@ class EmployeeManagmentController {
     }
     async GetOrdersByDriverId(req, res, next) {
         try {
-            const data = await EmployeeManagmentService.GetOrdersByDriverId(req.body);
+            const data = await EmployeeManagmentService.GetOrdersByDriverId(req,req.body);
             res.status(200).json(data);
         } catch (error) {
             next(error);

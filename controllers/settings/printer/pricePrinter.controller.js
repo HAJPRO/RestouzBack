@@ -6,7 +6,7 @@ class PricePrinterTemplateController {
    */
   async GetAll(req, res) {
     try {
-      const result = await TemplateService.GetAllTemplates(req.query);
+      const result = await TemplateService.GetAllTemplates(req,req.query);
       res.status(result.status).json({
         success: true,
         data: result.data
@@ -24,7 +24,7 @@ class PricePrinterTemplateController {
    */
   async Create(req, res) {
     try {
-      const result = await TemplateService.CreateTemplate(req.body);
+      const result = await TemplateService.CreateTemplate(req,req.body);
       res.status(result.status).json({
         success: true,
         data: result.data
@@ -42,7 +42,7 @@ class PricePrinterTemplateController {
    */
   async Update(req, res) {
     try {
-      const result = await TemplateService.UpdateTemplate(req.params.id, req.body);
+      const result = await TemplateService.UpdateTemplate(req,req.params.id, req.body);
       res.status(result.status).json({
         success: true,
         data: result.data
@@ -60,7 +60,7 @@ class PricePrinterTemplateController {
    */
   async Delete(req, res) {
     try {
-      const result = await TemplateService.DeleteTemplate(req.params.id);
+      const result = await TemplateService.DeleteTemplate(req,req.params.id);
       res.status(result.status || 200).json({
         success: true,
         message: "Shablon muvaffaqiyatli o'chirildi"
@@ -75,7 +75,7 @@ class PricePrinterTemplateController {
 //printer conf
 async GetAllPrinter(req, res) {
     try {
-      const result = await TemplateService.GetAllPrinter(req.query);
+      const result = await TemplateService.GetAllPrinter(req,req.query);
       res.json({
         success: true,
         data: result.printersList
@@ -90,7 +90,7 @@ async GetAllPrinter(req, res) {
 
   async sendToPrintBulk(req, res) {
     try {
-      const result = await TemplateService.sendToPrintBulk(req.body);
+      const result = await TemplateService.sendToPrintBulk(req,req.body);
       res.json(result);
     } catch (error) {
       res.json({

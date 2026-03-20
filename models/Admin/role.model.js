@@ -24,4 +24,4 @@ const RoleSchema = new Schema(
 }
 );
 
-module.exports = model("Role", RoleSchema);
+module.exports = RoleSchema;

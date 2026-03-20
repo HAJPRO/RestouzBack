@@ -1,268 +1,177 @@
-const ReadyWarehouse = require("../../../models/warehouses/r-warehouse/Rwarehouse.model");
-const {
-  generateUniquePartyNumber,
-} = require("../../../utils/generateUniqueNumber");
+const { generateUniquePartyNumber } = require("../../../utils/generateUniqueNumber");
 
 class ReadyWarehouseService {
-  // Modelni yaratish
+  /**
+   * 📄 Yangi partiya uchun model taqdim etish
+   */
   async GetModel() {
-    const partyNumber = await generateUniquePartyNumber(); // Unikal partiya raqamini olish
+    const partyNumber = await generateUniquePartyNumber();
     const model = {
-      partyNumber: partyNumber, // Partiya raqami
-      supplier: "", // Yetkazib beruvchi (firma yoki shaxs nomi)
-      manufacturer: "", // Ishlab chiqaruvchi korxona yoki brend nomi..
-      senderEmployee: "", // Mahsulotni jo‘natgan xodim (ism yoki ID)
-      receivedBy: "", // Mahsulotni qabul qilgan xodim
-      receivedDate: new Date(), // Qabul qilingan sana (hozirgi vaqt)
-      author: "", // Ushbu partiyani tizimga qo‘shgan foydalanuvchi
-      notes: "", // Izohlar (ixtiyoriy maydon)
-      totalAmount: "",
-      blockCostPrice: "",
-      costPrice: "",
-      products: [],
-      input: [],
-      output: [],
+      partyNumber: partyNumber,
+      supplier: "",
+      manufacturer: "",
+      senderEmployee: "",
+      receivedBy: "",
+      receivedDate: new Date(),
+      author: "",
+      notes: "",
+      totalAmount: 0,
+      products: [], // Amaldagi qoldiq
+      input: [],    // Kirimlar tarixi
+      output: [],   // Chiqimlar tarixi
     };
 
     return { msg: "Model taqdim qilindi!", model };
   }
 
-  // Yangi ReadyWarehouse yaratish
-  async Create(model, action) {
+  /**
+   * 🏗 Partiya yaratish yoki yangilash (Tenant-aware)
+   */
+  async Create(req, data) {
+    const { ReadyWarehouse } = req.tenantModels;
+    const { model, action } = data;
+
     try {
       if (action === "create") {
-        const changeProduct = await ReadyWarehouse.findOne({
-          product: model.product,
-        });
-        if (changeProduct) {
-          return { msg: "Bunday mahsulot sklada mavjud !", status: 404 };
+        // Partiya raqami takrorlanmasligini tekshirish
+        const existingParty = await ReadyWarehouse.exists({ partyNumber: model.partyNumber });
+        if (existingParty) {
+          return { status: 400, msg: "Ushbu partiya raqami allaqachon mavjud!" };
         }
-        await ReadyWarehouse.create({ ...model, input: model.products });
-        return { status: 200, msg: "Mahsulot muvaffaqiyatli qo'shildi!" };
+
+        const newParty = new ReadyWarehouse({
+          ...model,
+          author: req.user?.id,
+          input: model.products // Dastlabki kirim
+        });
+
+        await newParty.save();
+        return { status: 200, msg: "Partiya muvaffaqiyatli yaratildi!" };
       }
+
       if (action === "update") {
         const { id, newDataArray } = model;
-
         const updated = await ReadyWarehouse.findByIdAndUpdate(
           id,
           {
             $push: {
-              input: newDataArray,
-              products: newDataArray,
+              input: { $each: newDataArray },
+              products: { $each: newDataArray },
             },
           },
           { new: true, runValidators: true }
         );
-        return { status: 200, msg: "Muvaffaqiyatli qo'shildi" };
-      } else {
-        return { status: 404, msg: "Noto'g'ri amal turi" };
+
+        if (!updated) return { status: 404, msg: "Partiya topilmadi!" };
+        return { status: 200, msg: "Partiya muvaffaqiyatli yangilandi!" };
       }
+
+      return { status: 400, msg: "Noto'g'ri amal turi" };
     } catch (error) {
-      return { status: 404, msg: `Xatolik yuz berdi: ${error.message}` };
+      return { status: 500, msg: `Xatolik: ${error.message}` };
     }
   }
 
-  // Barcha ReadyWarehouse uzunligini olish
-  async getAllLength(data) {
-    const all = await ReadyWarehouse.find({ author: data.author }).then(
-      (data) => {
-        if (data) {
-          return data.length;
-        } else {
-          return 0;
-        }
+  /**
+   * 📊 Barcha partiyalarni filtrlash va olish
+   */
+  async GetAll(req, query) {
+    console.log(query)
+    const { ReadyWarehouse } = req.tenantModels;
+    try {
+      const page = Math.max(1, Number(query.page) || 1);
+      const limit = Math.max(1, Number(query.limit) || 15);
+      const skip = (page - 1) * limit;
+
+      const filter = {};
+      if (query.author) filter.author = query.author;
+      if (query.search) {
+        filter.partyNumber = { $regex: query.search, $options: "i" };
       }
-    );
-    return { all };
-  }
 
-  // Barcha ReadyWarehouse olish
-  async GetAll(data) {
-    try {
-      const all_length = await this.getAllLength(data);
-      const products = await this.GetAllParty(data);
-      return { products, all_length };
-    } catch (error) {
-      return { msg: `Server xatosi: ${error.message}`, warehouses: [] };
-    }
-  }
-  // 📌 **Barcha partyalar**
-  async GetAllParty(data) {
-    // if(data.author)   {
-
-    //       const products = await ReadyWarehouse.find()
-    //      return products.length ? products : [];
-    // }
-    //     const page = Number(data.page);
-    //     const limit = Number(data.limit)
-    //     const skip = (page - 1) * limit;
-    try {
-      if (data.author) {
-        const products = await ReadyWarehouse.find().populate("product");
-        console.log(products);
-
-        return products.length ? products : [];
-      } else {
-        const products = await ReadyWarehouse.find({ author: data.author })
+      const [products, total] = await Promise.all([
+        ReadyWarehouse.find(filter)
+          .populate("products.product")
+          .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
-          .lean();
+          .lean(),
+        ReadyWarehouse.countDocuments(filter)
+      ]);
 
-        return products.length ? products : [];
-      }
+      return { products, all_length: { all: total }, totalPages: Math.ceil(total / limit) };
     } catch (error) {
-      return { msg: `Server xatosi: ${error.message}` };
+      return { status: 500, msg: `Server xatosi: ${error.message}` };
     }
   }
-  async GetOne(data) {
+
+  /**
+   * 📤 Mahsulotni partiyadan chiqarish (Chiqim)
+   */
+  async OutputProduct(req, data) {
+    const { ReadyWarehouse } = req.tenantModels;
+    const { partyId, output } = data;
+
     try {
-      const product = await ReadyWarehouse.findById(data.id).lean();
-      return { product, msg: "Mahsulot topildi!" };
-    } catch (error) {
-      return { msg: `Server xatosi: ${error.message}`, warehouses: [] };
-    }
-  }
-  async OutputProduct(data) {
-    const partyId = data.partyId.id;
-    const output = data.output;
-    try {
-      // Output - array bo'lsa ham, object bo'lsa ham, uni massiv sifatida ishlaymiz
       const outputItems = Array.isArray(output) ? output : [output];
+      const party = await ReadyWarehouse.findById(partyId.id || partyId);
 
-      // 1. Partiyani topamiz
-      const product = await ReadyWarehouse.findOne({ _id: String(partyId) });
-      if (!product) {
-        return { status: 404, msg: "Partiya topilmadi", warehouses: [] };
-      }
+      if (!party) return { status: 404, msg: "Partiya topilmadi" };
 
-      // 2. Har bir chiqarilayotgan mahsulotni ko‘rib chiqamiz
-      for (const outputItem of outputItems) {
-        const foundProduct = product.products.find(
-          (item) => String(item._id) === String(outputItem._id)
-        );
-        if (!foundProduct) {
-          return {
-            status: 404,
-            msg: `Mahsulot topilmadi (ID: ${outputItem._id})`,
-            warehouses: [],
-          };
+      for (const outItem of outputItems) {
+        const target = party.products.id(outItem._id);
+        
+        if (!target) continue;
+        if (target.quantity < outItem.outputQuantity) {
+          return { status: 400, msg: `Miqdor yetarli emas: ${target.product}` };
         }
 
-        if (foundProduct.quantity < outputItem.outputQuantity) {
-          return {
-            status: 400,
-            msg: `Chiqarilayotgan miqdor mavjudidan oshib ketdi (ID: ${outputItem._id})`,
-            warehouses: [],
-          };
-        }
+        // 1. Qoldiqni kamaytirish
+        target.quantity -= outItem.outputQuantity;
 
-        // Miqdorni kamaytirish
-        foundProduct.quantity -= outputItem.outputQuantity;
-        foundProduct.totalPrice =
-          foundProduct.unit === "Blok"
-            ? foundProduct.quantity * foundProduct.blockCostPrice
-            : foundProduct.quantity * foundProduct.costPrice;
-
-        // Output massivga qo'shish
-        if (!Array.isArray(product.output)) {
-          product.output = [];
-        }
-
-        product.output.push({
-          _id: foundProduct._id,
-          product: foundProduct.product,
-          category: foundProduct.category,
-          quantity: outputItem.outputQuantity,
-          packagingType: foundProduct.packagingType,
-          unit: foundProduct.unit,
-          costPrice: foundProduct.costPrice,
-          blockCostPrice: foundProduct.blockCostPrice,
-          salePrice: foundProduct.salePrice,
-          registeredAt: output.outputRegisteredAt,
-          totalPrice:
-            foundProduct.unit === "Blok"
-              ? outputItem.outputQuantity * foundProduct.blockCostPrice
-              : outputItem.outputQuantity * foundProduct.costPrice,
-          manufactureDate: foundProduct.manufactureDate,
-          expireDate: foundProduct.expireDate,
+        // 2. Chiqim tarixiga qo'shish
+        party.output.push({
+          ...target.toObject(),
+          quantity: outItem.outputQuantity,
           outputDate: new Date(),
-          outputResponsible:
-            foundProduct.outputResponsible || outputItem.outputResponsible,
-          outputRecipient:
-            foundProduct.outputRecipient || outputItem.outputRecipient,
+          outputResponsible: req.user?._id
         });
       }
 
-      // 3. Umumiy summalarni hisoblash
-      product.totalOutputPrice = product.output.reduce(
-        (acc, item) => acc + item.totalPrice,
-        0
-      );
-      product.totalRemainderPrice =
-        product.totalAmount - product.totalOutputPrice;
-
-      // 4. Saqlash
-      await product.save();
-
-      // 5. Javob
-      return {
-        status: 200,
-        msg: "Chiqarish muvaffaqiyatli",
-        warehouses: product.products,
-      };
+      await party.save();
+      return { status: 200, msg: "Chiqim muvaffaqiyatli bajarildi", data: party.products };
     } catch (error) {
-      return {
-        status: 500,
-        msg: `Server xatosi: ${error.message}`,
-        warehouses: [],
-      };
+      return { status: 500, msg: error.message };
     }
   }
 
-  async DeleteById(data) {
+  /**
+   * 🗑 O'chirish mantiqi
+   */
+  async DeleteById(req, data) {
+    const { ReadyWarehouse } = req.tenantModels;
     const { id, action } = data;
-    console.log(data);
-
-    const actionsMap = {
-      1: { key: "input", successMsg: "Kirim muvaffaqiyatli o'chirildi!" },
-      2: { key: "products", successMsg: "Qoldiq muvaffaqiyatli o'chirildi!" },
-      3: { key: "output", successMsg: "Chiqim muvaffaqiyatli o'chirildi!" },
-      4: { key: "main", successMsg: "Muvaffaqiyatli o'chirildi!" },
-    };
-
-    const actionInfo = actionsMap[action];
-
-    if (!actionInfo) {
-      return { status: 404, msg: "Noto‘g‘ri harakat turi!" };
-    }
 
     try {
-      if (actionInfo.key === "main") {
+      if (action === 4) { // Butunlay o'chirish
         const deleted = await ReadyWarehouse.findByIdAndDelete(id);
-        if (!deleted) {
-          return { status: 404, msg: "Ma'lumot topilmadi." };
-        }
-        return { status: 200, msg: actionInfo.successMsg };
+        return deleted ? { status: 200, msg: "Partiya o'chirildi" } : { status: 404, msg: "Topilmadi" };
       }
 
-      const warehouse = await ReadyWarehouse.findOne({
-        [`${actionInfo.key}._id`]: id,
-      });
+      // Ichki elementlarni o'chirish (input/output/products)
+      const fieldMap = { 1: "input", 2: "products", 3: "output" };
+      const field = fieldMap[action];
 
-      if (!warehouse) {
-        return { status: 404, msg: "Ma'lumot topilmadi." };
-      }
+      if (!field) return { status: 400, msg: "Noto'g'ri action" };
 
-      // Delete by filtering out matching item
-      warehouse[actionInfo.key] = warehouse[actionInfo.key].filter(
-        (item) => item._id.toString() !== id
+      await ReadyWarehouse.updateOne(
+        { [`${field}._id`]: id },
+        { $pull: { [field]: { _id: id } } }
       );
 
-      await warehouse.save();
-
-      return { status: 200, msg: actionInfo.successMsg };
+      return { status: 200, msg: "Ma'lumot o'chirildi" };
     } catch (error) {
-      return { status: 500, msg: `Server xatosi: ${error.message}` };
+      return { status: 500, msg: error.message };
     }
   }
 }

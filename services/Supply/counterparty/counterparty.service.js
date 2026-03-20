@@ -1,16 +1,17 @@
-const Counterparty = require("../../../models/Supply/counterparty.model"); // Mijoz o'rniga Yetkazib beruvchi modeli
-const Inbound = require("../../../models/Supply/counterparty.model");    // Sotuv o'rniga Kirim modeli
 const { ExportExcelSupplierInbounds } = require("../../../utils/ExportExcel");
 const { generateQRCode } = require("../../../utils/generater");
+
 class CounterpartyService {
-  // 📌 Kontragent yaratish va tahrirlash
- async Save(data) {
-    const action = data.action;
-    const model = data.model;
+  /**
+   * 📌 Kontragent (Yetkazib beruvchi) yaratish va tahrirlash
+   */
+  async Save(req, data) {
+    const { Counterparty } = req.tenantModels; // ✅ Tenantga xos model
+    const { action, model } = data;
 
     try {
       if (action === "create") {
-        // 1. Nom yoki Kod bo'yicha takrorlanishni tekshirish
+        // 1. Unikallikni tekshirish (Tenant doirasida)
         const supplierExists = await Counterparty.exists({ 
             $or: [{ fullname: model.fullname }, { code: model.code }] 
         });
@@ -19,23 +20,29 @@ class CounterpartyService {
           return { status: "400", msg: "Bunday kontragent yoki kod bazada mavjud!" };
         }
 
-        // 2. QR kod generatsiya qilish (model.code asosida)
+        // 2. QR kod generatsiya qilish
         if (model.code) {
           model.qr = await generateQRCode(model.code);
         }
 
-        const supplier = new Counterparty(model);
+        const supplier = new Counterparty({
+            ...model,
+            author: req.user?._id // Yaratuvchini belgilash
+        });
         await supplier.save();
         
-        return { status: "200", msg: "Kontragent muvaffaqiyatli qo'shildi!" };
+        return { status: "200", msg: "Kontragent muvaffaqiyatli qo'shildi!", data: supplier };
       }
 
       if (action === "update") {
         const { _id, ...updateData } = model;
 
-        // 3. Agar kod o'zgargan bo'lsa, yangi QR kod generatsiya qilish
+        // 3. Kod o'zgargan bo'lsa QR kodni yangilash
         if (updateData.code) {
-          updateData.qr = await generateQRCode(updateData.code);
+          const current = await Counterparty.findById(_id);
+          if (current && current.code !== updateData.code) {
+             updateData.qr = await generateQRCode(updateData.code);
+          }
         }
 
         const updated = await Counterparty.findByIdAndUpdate(_id, updateData, {
@@ -44,91 +51,77 @@ class CounterpartyService {
         });
 
         if (!updated) {
-          return { status: "404", msg: "O'zgartirish uchun kontragent topilmadi!" };
+          return { status: "404", msg: "Yangilanadigan kontragent topilmadi!" };
         }
 
-        return { status: "200", msg: "Ma'lumotlar muvaffaqiyatli yangilandi!", data: updated };
+        return { status: "200", msg: "Ma'lumotlar yangilandi!", data: updated };
       }
 
       return { status: "400", msg: "Noto'g'ri amal turi" };
     } catch (error) {
-      console.error("Error in Counterparty Save:", error);
-      throw new Error("Error in Counterparty Save: " + error.message);
+      console.error("Counterparty Save Error:", error);
+      return { status: "500", msg: error.message };
     }
   }
 
-  // 📌 Umumiy sonini olish
-  async getAllLength() {
+  /**
+   * 📌 Kontragentlar ro'yxatini filter bilan olish
+   */
+  async GetAll(req, data) {
+    console.log(data)
+    const { Counterparty } = req.tenantModels;
     try {
-      const count = await Counterparty.countDocuments();
-      return { all: count };
-    } catch (error) {
-      return { all: 0 };
-    }
-  }
-
-  // 📌 Filtrlangan ro'yxatni olish
-  async GetAll(data) {
-    try {
-      const all_length = await this.getAllLength();
+      let data = { isActive: true }; // O'chirilmaganlarni olish (tavsiya)
       
-      // Qidiruv filtri
-      let query = {};
       if (data.filter && data.filter.fullname) {
-        query = {
-          $or: [
-            { fullname: { $regex: data.filter.fullname, $options: "i" } },
-            { phoneNumber: { $regex: data.filter.fullname, $options: "i" } },
-            { inn: { $regex: data.filter.fullname, $options: "i" } } // STIR bo'yicha ham qidirish
-          ]
-        };
+        query.$or = [
+          { fullname: { $regex: data.filter.fullname, $options: "i" } },
+          { phoneNumber: { $regex: data.filter.fullname, $options: "i" } },
+          { inn: { $regex: data.filter.fullname, $options: "i" } }
+        ];
       }
 
-      const counterparties = await Counterparty.find(query)
-        .sort({ createdAt: -1 })
-        .lean();
+      const [counterparties, count] = await Promise.all([
+        Counterparty.find().sort({ createdAt: -1 }).lean(),
+        Counterparty.countDocuments()
+      ]);
 
-      return { counterparties, all_length };
-    } catch (error) {
-      return {
-        status: 500,
-        msg: `Server xatosi: ${error.message}`,
-        counterparties: [],
-        all_length: { all: 0 },
+      return { 
+        success: true, 
+        counterparties, 
+        all_length: { all: count } 
       };
-    }
-  }
-
-  // 📌 O'chirish
-  async DeleteById(data) {
-    try {
-      const deleted = await Counterparty.findByIdAndDelete(data.id);
-      if (!deleted) return { status: 404, msg: "Kontragent topilmadi!" };
-      return { status: 200, msg: "Kontragent o'chirildi!" };
     } catch (error) {
-      return { status: 500, msg: `Xatolik: ${error.message}` };
+      return { status: 500, msg: error.message, counterparties: [] };
     }
   }
 
-  // 📌 ID bo'yicha bittasini olish
-  async GetById(data) {
+  /**
+   * 📌 O'chirish (Soft Delete)
+   */
+  async DeleteById(req, id) {
+    const { Counterparty } = req.tenantModels;
     try {
-      const counterparty = await Counterparty.findById(data.id);
-      if (!counterparty) return { status: 404, msg: "Topilmadi!" };
-      return { status: 200, counterparty };
+      // Fizik o'chirish o'rniga isActive: false qilish xavfsizroq
+      const deleted = await Counterparty.findByIdAndUpdate(id, { isActive: false });
+      if (!deleted) return { status: 404, msg: "Topilmadi!" };
+      return { status: 200, msg: "Kontragent o'chirildi!" };
     } catch (error) {
       return { status: 500, msg: error.message };
     }
   }
 
-  // 📌 Kontragentning sut topshirish tarixi (Kirimlar)
-  async GetInboundsBySupplierId(data) {
+  /**
+   * 📌 Kontragentning kirimlar tarixi (Supply History)
+   */
+  async GetInboundsBySupplierId(req, data) {
+    const { Inbound } = req.tenantModels; // ✅ To'g'ri model (accessoriesInbound)
     const id = data.id;
     try {
-      // Inbound (Kirim) modelidan supplierId bo'yicha qidiramiz
-      const inbounds = await Inbound.find({ supplierId: id })
-        .populate("author", "fullname phoneNumber") // Kim qabul qilgani
-        .sort({ date: -1 });
+      const inbounds = await Inbound.find({ counterparty: id }) // Inbound modelidagi maydon nomiga qarang
+        .populate("receivedBy", "fullname phoneNumber")
+        .sort({ createdAt: -1 })
+        .lean();
 
       return { status: 200, inbounds };
     } catch (error) {
@@ -136,17 +129,18 @@ class CounterpartyService {
     }
   }
 
-  // 📌 Excel hisobot yaratish
+  /**
+   * 📌 Excel Export
+   */
   async ExportExcelDownload(data) {
     try {
-      // Sut kirimlari bo'yicha hisobot yaratish utilini chaqiramiz
       const result = await ExportExcelSupplierInbounds(data);
       if (!result || !result.buffer) {
-        throw new Error("Excel yaratishda xatolik (Buffer bo'sh)");
+        throw new Error("Excel yaratishda xatolik");
       }
       return result;
     } catch (error) {
-      throw new Error("Excel Export Error: " + error.message);
+      throw new Error("Export Error: " + error.message);
     }
   }
 }

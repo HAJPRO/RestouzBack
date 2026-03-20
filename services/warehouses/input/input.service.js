@@ -1,281 +1,224 @@
-const ReadyWarehouse = require("../../../models/warehouses/r-warehouse/Rwarehouse.model.js");
-const Product = require("../../../models/Sale/products/product.model");
-const InputHistory = require("../../../models/warehouses/input/input.model");
-const SaleModel = require("../../../models/Sale/orders/sales.model.js");
-const { generateUniquePartyNumber } = require("../../../utils/generateUniqueNumber");
-
 class WarehouseInputService {
-async create(payload) {
-  const newPartyNumber =`FKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  try {
-    // 1. Validatsiya
-    if (!payload.items || payload.items.length === 0) {
-      return { success: false, status: 400, msg: "Mahsulotlar tanlanmagan!" };
+  /**
+   * 📥 Omborga yangi kirim qilish (Batch/Party entry)
+   */
+async create(req, payload) {
+    const { ReadyWarehouse, Product, InboundHistory } = req.tenantModels;
+    const userId = req.user?.id;
+console.log(userId);
+
+    try {
+        // 1. Kiruvchi payloadni tekshirish
+        if (!payload || !payload.items || !Array.isArray(payload.items)) {
+            return { success: false, status: 400, msg: "Noto'g'ri so'rov formati!" };
+        }
+
+        const warehouseEntries = [];
+        const historyItems = [];
+        let totalInvoiceAmount = 0;
+        const now = new Date();
+
+        // 2. Ma'lumotlarni tozalash va tayyorlash
+        for (const item of payload.items) {
+            // Frontenddan kelayotgan IDni tekshirish
+            const productId = item.product?._id || item.product;
+            const initialQty = Number(item.initialQuantity);
+            const costPrice = Number(item.costPrice);
+            const salePrice = Number(item.salePrice);
+
+            // MUHIM: Har bir itemni alohida tekshiramiz
+            if (!productId || isNaN(initialQty) || isNaN(costPrice) || isNaN(salePrice)) {
+                console.warn("⚠️ Noto'g'ri item tashlab ketildi:", item);
+                continue; 
+            }
+
+            totalInvoiceAmount += (initialQty * costPrice);
+
+            // ReadyWarehouse uchun yangi toza obyekt
+            // Hech qanday "spread" (...) ishlatmasdan, har bir maydonni qo'lda yozamiz
+            const entry = {
+                product: productId,
+                branchId: userId || "1",
+                supplierId: userId || "1",
+                partyNumber: String(payload.partyNumber || "F-001"),
+                initialQuantity: initialQty,
+                currentQuantity: initialQty, // currentQuantity = initialQuantity
+                costPrice: costPrice,
+                salePrice: salePrice,
+                status: 'active',
+                createdAt: now,
+                author :userId
+            };
+
+            warehouseEntries.push(entry);
+
+            historyItems.push({
+                product: productId,
+                qty: initialQty,
+                costPrice: costPrice,
+                salePrice: salePrice
+            });
+        }
+
+        // 3. Agar massiv bo'sh bo'lsa, insertMany ga yubormaymiz
+        if (warehouseEntries.length === 0) {
+            return { success: false, status: 400, msg: "Yaroqli mahsulotlar topilmadi. Ma'lumotlarni tekshiring!" };
+        }
+
+        // 4. InboundHistory yaratish
+        const history = await InboundHistory.create({
+            partyNumber: String(payload.partyNumber || "F-001"),
+            supplierId: userId || "1",
+            branchId: userId || "1",
+            items: historyItems,
+            totalAmount: totalInvoiceAmount,
+            author: userId,
+            createdAt: now
+        });
+
+        // 5. ReadyWarehouse ga saqlash
+        // Har bir entryga tarix IDsini qo'shamiz
+        const finalEntries = warehouseEntries.map(e => ({ ...e, inputId: history._id }));
+        
+        // DEBUG: insertMany dan oldin oxirgi marta tekshirish
+        console.log("🚀 Bazaga ketayotgan entries:", JSON.stringify(finalEntries[0], null, 2));
+
+        await ReadyWarehouse.insertMany(finalEntries);
+
+        // 6. Qoldiqlarni yangilash
+        const updatePromises = historyItems.map(h => 
+            Product.findByIdAndUpdate(h.product, { $inc: { totalStock: h.qty } })
+        );
+        await Promise.all(updatePromises);
+
+        return { 
+            success: true, 
+            status: 201, 
+            msg: `Kirim bajarildi! Faktura: ${payload.partyNumber}`,
+            data: history 
+        };
+
+    } catch (error) {
+        console.error("❌ INBOUND CRITICAL ERROR:", error);
+        return { 
+            success: false, 
+            status: 500, 
+            msg: "Serverda xatolik: " + error.message 
+        };
     }
-
-    const warehouseEntries = [];
-    const historyItems = []; // History uchun to'g'ri formatdagi itemlar
-    const now = new Date();
-    let totalInvoiceAmount = 0;
-
-    for (const item of payload.items) {
-      const qty = Number(item.initialQuantity);
-      const cost = Number(item.costPrice);
-      const sale = Number(item.salePrice);
-      
-      totalInvoiceAmount += qty * cost;
-
-      // A) Ombor (ReadyWarehouse) uchun obyekt
-      warehouseEntries.push({
-        product: item.product,
-        supplierId: payload.supplierId,
-        branchId: payload.branchId,
-        initialQuantity: qty,
-        currentQuantity: qty,
-        costPrice: cost,
-        salePrice: sale,
-        partyNumber: payload.partyNumber,
-        status: 'active',
-        createdAt: now
-      });
-
-      
-      historyItems.push({
-        product: item.product,
-        qty: qty, // <--- Xatolik shu yerda edi, nomini mosladik
-        costPrice: cost,
-        salePrice: sale
-      });
-
-      // C) Product modelida umumiy qoldiqni yangilash
-      await Product.findByIdAndUpdate(item.product, { 
-        $inc: { totalStock: qty } 
-      });
-    }
-
-    // 2. Omborga partiyalarni ommaviy yozish
-    await ReadyWarehouse.insertMany(warehouseEntries);
-
-    // 3. Kirim tarixini saqlash
-    // Payload'dan emas, biz tayyorlagan 'historyItems' dan foydalanamiz
-    const history = await InputHistory.create({
-      partyNumber: payload.partyNumber,
-      supplierId: payload.supplierId,
-      branchId: payload.branchId,
-      items: historyItems, // <--- To'g'irlangan massiv
-      totalAmount: totalInvoiceAmount,
-      note: payload.note || "",
-      action: payload.action || 1,
-      createdAt: now
-    });
-
-    return { 
-      success: true, 
-      status: 201, 
-      msg: `Kirim muvaffaqiyatli! Faktura: ${payload.partyNumber}`,
-      data: history 
-    };
-
-  } catch (error) {
-    console.log("Inbound Error:", error);
-
-    // Duplicate key xatosi uchun chiroyli javob
-    // if (error.code === 11000) {
-    //   return { 
-    //     success: false, 
-    //     status: 400, 
-    //     msg: `Xatolik: ${payload.partyNumber} raqamli faktura avval kiritilgan!` 
-    //   };
-    // }
-
-    return { success: false, status: 500, msg: "Serverda xatolik yuz berdi" };
-  }
 }
- 
- async getAll(payload) {
-  console.log(payload)
-  // 1. Argument nomini payload-ga o'zgartirdik (data bilan adashmaslik uchun)
-  const { status,author,startDate,endDate,search } = payload;
-  
+
+  /**
+   * 📜 Kirimlar tarixini olish (Pagination bilan)
+   */
+ async getAll(req, query) {
+  const { InboundHistory } = req.tenantModels;
+  const { startDate, endDate, search } = query;
+
   try {
-    // 2. Pagination parametrlarini standartlashtirish
-    const page = Math.max(1, parseInt(payload.page) || 1);
-    const limit = Math.max(1, parseInt(payload.limit) || 10);
+    const page = Math.max(1, parseInt(query.page) || 1);
+    const limit = Math.max(1, parseInt(query.limit) || 15);
     const skip = (page - 1) * limit;
 
-    // 3. Dinamik filtr obyektini shakllantirish
     let filter = {};
 
-    if (author) filter.author = author;
-    if (status) filter.status = status;
-
-    // Sana oralig'i (Frontenddan kelsa)
+    // SANA FILTRI (createdAt bo'yicha)
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
       if (endDate) {
         const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // Kun oxirigacha qamrab olish
+        end.setHours(23, 59, 59, 999);
         filter.createdAt.$lte = end;
       }
     }
 
-    // Qidiruv mantiqi
+    // QIDIRUV
     if (search) {
-      const searchRegex = { $regex: search, $options: "i" };
-      filter.$or = [
-        { partyNumber: searchRegex },
-        { manufacturer: searchRegex }
-      ];
+      filter.partyNumber = { $regex: search, $options: "i" };
     }
 
-    // 4. So'rovni bajarish (Parallel ravishda)
-    // Natijani 'items' deb nomladik, 'data' emas
+    // MA'LUMOTNI OLISH
     const [items, total] = await Promise.all([
-      InputHistory.find()
-        // .populate('product', 'name code category unit') 
-        // .populate('author', 'fullname role') 
+      InboundHistory.find(filter)
+        .populate('supplierId', 'fullname')
+        // .populate('author', 'fullname')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(), 
-      InputHistory.countDocuments(filter)
+        .lean(),
+      InboundHistory.countDocuments(filter)
     ]);
 
-    // 5. Natijani qaytarish
     return { 
       success: true, 
-      data: items, // Frontend uchun standart 'data' kaliti ostida yuboramiz
+      data: items, 
       pagination: { 
         total, 
         page, 
         limit, 
         totalPages: Math.ceil(total / limit) 
-      }
+      } 
     };
 
   } catch (error) {
-    console.error("Database Error:", error);
-    return { 
-      success: false, 
-      msg: `Server xatosi: ${error.message}`, 
-      data: [],
-      pagination: { total: 0, page: 1, limit: 10, totalPages: 0 }
-    };
+    console.error("GET_ALL_ERROR:", error);
+    return { success: false, msg: error.message };
   }
 }
-  
-  /**
-   * Bitta partiyani olish
-   */
-  async getOne(id) {
-    try {
-      const product = await ReadyWarehouse.findById(id).populate('product').lean();
-      if (!product) {
-          return { success: false, status: 404, msg: "Partiya topilmadi" };
-      }
-      return { success: true, product };
-    } catch (error) {
-      return { success: false, status: 500, msg: `Server xatosi: ${error.message}` };
-    }
-  }
 
   /**
-   * Mahsulot chiqarish (Sotuv/Chiqim) - Frontending OutputProduct() bilan ishlashi kerak
-   * @param {Object} data - { partyId: {id}, output: [{_id, outputQuantity, ...}] }
+   * 📤 Mahsulotni ombordan chiqarish (Output/Sale)
    */
-  async outputProduct(data) {
-    const partyId = data.partyId.id; // Partiya IDsi
-    const outputItem = Array.isArray(data.output) ? data.output[0] : data.output; // Frontend odatda bitta item yuboradi
+  async outputProduct(req, data) {
+    const { ReadyWarehouse, Product } = req.tenantModels;
+    const partyId = data.partyId?.id || data.partyId;
+    const outputQty = Number(data.outputQuantity || data.output?.[0]?.outputQuantity);
 
-    if (!outputItem || !outputItem.outputQuantity || outputItem.outputQuantity <= 0) {
+    if (!outputQty || outputQty <= 0) {
         return { success: false, status: 400, msg: "Noto'g'ri chiqim miqdori" };
     }
 
     try {
-      // 1. Partiyani topamiz va miqdorni tekshiramiz
       const party = await ReadyWarehouse.findById(partyId);
-      if (!party) {
-        return { success: false, status: 404, msg: "Partiya topilmadi" };
-      }
+      if (!party) return { success: false, status: 404, msg: "Partiya topilmadi" };
 
-      // 2. Qoldiq tekshiruvi
-      if (party.currentQuantity < outputItem.outputQuantity) {
-        return { success: false, status: 400, msg: `Chiqarilayotgan miqdor mavjudidan (${party.currentQuantity}) oshib ketdi` };
+      if (party.currentQuantity < outputQty) {
+        return { success: false, status: 400, msg: `Mavjud qoldiq: ${party.currentQuantity}` };
       }
       
-      const quantityToSubtract = outputItem.outputQuantity;
-      
-      // 3. Partiyadagi qoldiqni kamaytiramiz
-      party.currentQuantity -= quantityToSubtract;
-      if (party.currentQuantity === 0) {
-          party.status = 'sold_out';
-      }
+      // FIFO yoki Partiya bo'yicha kamaytirish
+      party.currentQuantity -= outputQty;
+      if (party.currentQuantity === 0) party.status = 'sold_out';
 
-      // 4. Global Product qoldig'ini kamaytiramiz
-      await Product.findByIdAndUpdate(
-          party.product,
-          { $inc: { totalStock: -quantityToSubtract } } // Minus bilan kamaytiramiz
-      );
+      await Promise.all([
+        party.save(),
+        Product.findByIdAndUpdate(party.product, { $inc: { totalStock: -outputQty } })
+      ]);
 
-      // 5. Saqlash
-      await party.save();
-
-      return { success: true, status: 200, msg: "Mahsulot muvaffaqiyatli chiqarildi", data: party };
-
+      return { success: true, status: 200, msg: "Mahsulot chiqarildi", data: party };
     } catch (error) {
-      console.error("Output Product Error:", error);
-      return { success: false, status: 500, msg: `Server xatosi: ${error.message}` };
+      return { success: false, status: 500, msg: error.message };
     }
   }
-  
+
   /**
-   * O'chirish (DELETE) - Hujjatni yoki ichki elementni o'chirish
-   * Frontend: ReadyWarehouseService.DeleteById(id, action);
+   * 🗑 Ma'lumotlarni tozalash (Tenant bazasini tozalash)
    */
-  async deleteById(id, action = 4) {
-    const actionsMap = {
-        // Hozirgi modelda input/output massivi yo'q, faqat asosiy hujjat bor, shuning uchun action 1, 2, 3 mantiqsiz.
-        // Agar bo'lsa, $pull ishlatilardi.
-        4: { msg: "Partiya butunlay o'chirildi", key: 'main' }
-    };
-    
-    if (action !== 4) {
-        return { success: false, status: 400, msg: "Faqat to'liq partiyani o'chirishga ruxsat bor!" };
-    }
-
+  async clearAllData(req) {
+    const { ReadyWarehouse, InputHistory, SaleModel, Product } = req.tenantModels;
     try {
-      const deletedParty = await ReadyWarehouse.findByIdAndDelete(id);
-      
-      if (!deletedParty) {
-        return { success: false, status: 404, msg: "Ma'lumot topilmadi." };
-      }
-      
-      // ⚠️ PARTIYA O'CHIRILGANDA: Product totalStock ni qayta hisoblash
-      await Product.findByIdAndUpdate(
-          deletedParty.product,
-          { $inc: { totalStock: -deletedParty.currentQuantity } } // O'chirilgan qoldiqni ayiramiz
-      );
-
-      return { success: true, status: 200, msg: actionsMap[action].msg };
-
+      await Promise.all([
+        ReadyWarehouse.deleteMany({}),
+        InputHistory.deleteMany({}),
+        SaleModel.deleteMany({}),
+        Product.updateMany({}, { totalStock: 0 })
+      ]);
+      return { success: true, msg: "Faqat ushbu tenant ma'lumotlari tozalandi!" };
     } catch (error) {
-      return { success: false, status: 500, msg: `Server xatosi: ${error.message}` };
+      return { success: false, msg: error.message };
     }
   }
-
-async clearAllData() {
-  try {
-    // Barcha partiyalarni va kirim tarixini o'chirish
-    await ReadyWarehouse.deleteMany({});
-    await InputHistory.deleteMany({});
-    await SaleModel.deleteMany({});
-    await Product.updateMany({}, { totalStock: 0 });
-    return { success: true, msg: "Barcha ma'lumotlar o'chirildi!" };
-  } catch (error) {
-    return { error: true, msg: error.msg};
-  }
-}
 }
 
 module.exports = new WarehouseInputService();

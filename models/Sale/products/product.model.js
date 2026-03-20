@@ -93,4 +93,4 @@ qr:{type:String},
   }
 );
 
-module.exports = model("Product", ProductSchema);
+module.exports = ProductSchema;

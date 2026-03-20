@@ -7,7 +7,7 @@ class InboundController {
    */
   async create(req, res) {
     try {
-      const result = await InboundService.createInbound(req.body, req.user?.id);
+      const result = await InboundService.createInbound(req,req.body, req.user?.id);
       
       res.status(201).json({
         success: true,
@@ -29,7 +29,7 @@ class InboundController {
   async saveLabAnalysis(req, res) {
     try {
       // req.body ichida inboundBatchIds, labResults, distribution kabi ma'lumotlar keladi
-      const result = await InboundService.saveLabAnalysis(req.body, req.user?.id);
+      const result = await InboundService.saveLabAnalysis(req,req.body, req.user?.id);
 
       res.status(200).json({
         success: true,
@@ -49,7 +49,7 @@ class InboundController {
    */
   async index(req, res) {
     try {
-      const inbounds = await InboundService.getAllInbounds(req.query);
+      const inbounds = await InboundService.getAllInbounds(req,req.query);
       res.json({
         success: true,
         data: inbounds
@@ -67,7 +67,7 @@ class InboundController {
    */
   async GetAll(req, res) {
     try {
-      const inbound = await InboundService.getAllInbounds();
+      const inbound = await InboundService.getAllInbounds(req);
       res.json({
         success: true,
         data: inbound
@@ -85,7 +85,7 @@ class InboundController {
    */
   async show(req, res) {
     try {
-      const inbound = await InboundService.getInboundById(req.params.id);
+      const inbound = await InboundService.getInboundById(req,req.params.id);
       res.json({
         success: true,
         data: inbound

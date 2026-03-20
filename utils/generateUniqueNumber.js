@@ -52,7 +52,7 @@ async function generateUniqueOrderNumber() {
   return orderNumber;
 }
 
-async function generateUniqueLabNumber() {
+async function generateUniqueLabNumber(req) {
   const year = new Date().getFullYear(); // Masalan, 2025
   const prefix = `Lab-${year}-`;
 
@@ -63,9 +63,9 @@ async function generateUniqueLabNumber() {
   // Unikal raqamni topish uchun sikl
   while (!isUnique) {
     partyNumber = `${prefix}${newNumber}`;
-
     // Agar raqam mavjud bo‘lsa, yangi raqamni oshiramiz
-    const existingOrder = await Laboratory.findOne({ partyNumber });
+   const {  LabAnalysis } = req.tenantModels;
+    const existingOrder = await LabAnalysis.findOne({ partyNumber });
 
     if (!existingOrder) {
       isUnique = true; // Raqam unikal bo‘lsa sikldan chiqamiz

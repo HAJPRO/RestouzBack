@@ -22,4 +22,4 @@ const rawMaterialSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('RawMaterial', rawMaterialSchema);
+module.exports = rawMaterialSchema;

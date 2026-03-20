@@ -6,7 +6,7 @@ class AuthController {
   async register(req, res, next) {
     try {
 
-      const data = await authService.register(req.body);
+      const data = await authService.register(req,req.body);
       res.cookie("refreshToken", data.refreshToken, {
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -16,22 +16,27 @@ class AuthController {
       next(error);
     }
   }
-  async login(req, res, next) {
-    try {
-      const { username, password } = req.body;
-      const data = await authService.login(username, password);
-      res.cookie("refreshToken", data.refreshToken, {
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-      return res.json(data);
-    } catch (error) {
-      next(error);
-    }
+async login(req, res, next) {
+  try {
+    const { username, password } = req.body;
+    
+    // MUHIM: Servicega 'req' obyektini uzatish kerak
+    const data = await authService.login(req, username, password); 
+
+    res.cookie("refreshToken", data.refreshToken, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      // isProd ? { sameSite: 'none', secure: true } : {} // Agar HTTPS bo'lsa kerak bo'ladi
+    });
+
+    return res.json(data); // Mana shu javob Front-endga boradi
+  } catch (error) {
+    next(error);
   }
+}
   async update(req, res, next) {
     try {
-      const data = await authService.update(req.body);
+      const data = await authService.update(req,req.body);
       return res.json(data);
     } catch (error) {
       next(error);
@@ -40,7 +45,7 @@ class AuthController {
   async activation(req, res, next) {
     try {
       const userId = req.params.id;
-      await authService.activation(userId);
+      await authService.activation(req,userId);
       return res.redirect(process.env.CLIENT_URL);
     } catch (error) {
       next(error);
@@ -50,7 +55,7 @@ class AuthController {
   async logout(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const token = await authService.logout(refreshToken);
+      const token = await authService.logout(req,refreshToken);
       res.clearCookie("refreshToken");
       return res.json({ token });
     } catch (error) {
@@ -61,7 +66,7 @@ class AuthController {
   async refresh(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const data = await authService.refresh(refreshToken);
+      const data = await authService.refresh(req,refreshToken);
       res.cookie("refreshToken", data.refreshToken, {
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -74,7 +79,7 @@ class AuthController {
 
   async getUser(req, res, next) {
     try {
-      const data = await authService.getUsers();
+      const data = await authService.getUsers(req);
       return res.json(data);
     } catch (error) {
       next(error);

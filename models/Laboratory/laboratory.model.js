@@ -30,4 +30,4 @@ const LabAnalysisSchema = new Schema({
   status :{type:String, default:"Qabul qilindi"},
   state : {type:Boolean, default:true}
 }, { timestamps: true });
-module.exports = model("Laboratory", LabAnalysisSchema);
+module.exports = LabAnalysisSchema;

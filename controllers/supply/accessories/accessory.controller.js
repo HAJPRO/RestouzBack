@@ -8,7 +8,7 @@ class AccessoriesController {
         try {
             // Base64 formatida rasm va action/model req.body ichida keladi
             // req.user.id - foydalanuvchi identifikatori (middleware orqali keladi)
-            const result = await AccessoriesService.create(req.body, req.user?.id);
+            const result = await AccessoriesService.create(req,req.body, req.user?.id);
 
             // Service darajasidagi mantiqiy xatoliklarni tekshirish (400, 404)
             if (result.status && result.status !== "200") {
@@ -38,7 +38,7 @@ class AccessoriesController {
     async getAllMaterials(req, res, next) {
         try {
             const filter = req.body.filter || {};
-            const materials = await AccessoriesService.getAll(filter);
+            const materials = await AccessoriesService.getAll(req,filter);
 
             return res.status(200).json({
                 success: true,
@@ -64,7 +64,7 @@ class AccessoriesController {
                 });
             }
 
-            const material = await AccessoriesService.getById(id);
+            const material = await AccessoriesService.getById(req,id);
 
             if (!material) {
                 return res.status(404).json({
@@ -97,7 +97,7 @@ class AccessoriesController {
                 });
             }
 
-            const result = await AccessoriesService.delete(id);
+            const result = await AccessoriesService.delete(req,id);
 
             if (!result) {
                 return res.status(404).json({ 

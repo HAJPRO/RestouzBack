@@ -56,19 +56,23 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Lokal rejimda yoki ruxsat etilgan domen bo'lsa ruxsat berish
     if (!origin || !isProd || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error(`CORS rad etildi: ${origin}`);
       callback(new Error("CORS: Ruxsat etilmagan domen"));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Origin', 'Content-Type', 'Accept', 'Authorization']
+  // SHU YERGA 'x-tenant-id'ni QO'SHAMIZ:
+  allowedHeaders: [
+    'Origin', 
+    'Content-Type', 
+    'Accept', 
+    'Authorization', 
+    'x-tenant-id' // <--- Mana bu juda muhim!
+  ]
 };
-
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
@@ -76,33 +80,35 @@ app.use(express.static(path.join(__dirname, "public")));
 // ------------------ ROUTES ------------------
 // Bots
 require("./bots/drivers/bot.js");
-
+const tenantMiddleware = require("./middlewares/db/tenant.middleware.js");
+const tenantRouter = express.Router();
+tenantRouter.use(tenantMiddleware); // Barcha ichki routelar uchun bazani ulaydi
 // API Yo'nalishlari
-app.use("/api/v1/helpers", require("./routes/helpers/address/address.route.js"));
-app.use("/api/v1/dashboard/statistics/sale", require("./routes/dashboard/statistics/saleStatistic.route.js"));
-app.use("/api/v1/admin/permission", require("./routes/admin/permission.route.js"));
-app.use("/api/v1/admin/role", require("./routes/admin/role.route.js"));
-app.use("/api/v1/admin/user", require("./routes/admin/users.route.js"));
-app.use("/api/v1/auth", require("./routes/auth.route.js"));
-app.use("/api/v1/hr/employees", require("./routes/hr/employee/employee.route.js"));
-app.use("/api/v1/drivers", require("./routes/drivers/driver.route.js"));
-app.use("/api/v1/customers", require("./routes/customers/c-managment/managment.route.js"));
-app.use("/api/v1/sale", require("./routes/sale/orders/order.route.js"));
-app.use("/api/v1/sale/products", require("./routes/sale/products/product.route.js"));
-app.use("/api/v1/sale/salepos", require("./routes/sale/salepos/salepos.route.js"));
-app.use("/api/v1/warehouses", require("./routes/warehouses/r-warehouse/warehouse.route.js"));
-app.use("/api/v1/warehouses/input", require("./routes/warehouses/input/input.route.js"));
-app.use("/api/v1/supply/counterparty", require("./routes/supply/counterparty/counterparty.route.js"));
-app.use("/api/v1/supply/inbound", require("./routes/supply/inbound/inbound.route.js"));
-app.use("/api/v1/supply/rawmaterial", require("./routes/supply/rawmaterial/rawmaterial.route.js"));
-app.use("/api/v1/supply/accessories", require("./routes/supply/accessories/accessory.route.js"));
-app.use("/api/v1/supply/accessories/inbound", require("./routes/supply/accessories/inputinbound.route.js"));
-app.use("/api/v1/laboratory/analitic", require("./routes/laboratory/analitic/analitic.route.js"));
+tenantRouter.use("/helpers", require("./routes/helpers/address/address.route.js"));
+tenantRouter.use("/dashboard/statistics/sale", require("./routes/dashboard/statistics/saleStatistic.route.js"));
+tenantRouter.use("/admin/permission", require("./routes/admin/permission.route.js"));
+tenantRouter.use("/admin/role", require("./routes/admin/role.route.js"));
+tenantRouter.use("/admin/user", require("./routes/admin/users.route.js"));
+tenantRouter.use("/auth", require("./routes/auth.route.js"));
+tenantRouter.use("/hr/employees", require("./routes/hr/employee/employee.route.js"));
+tenantRouter.use("/drivers", require("./routes/drivers/driver.route.js"));
+tenantRouter.use("/customers", require("./routes/customers/c-managment/managment.route.js"));
+tenantRouter.use("/sale", require("./routes/sale/orders/order.route.js"));
+tenantRouter.use("/sale/products", require("./routes/sale/products/product.route.js"));
+tenantRouter.use("/sale/salepos", require("./routes/sale/salepos/salepos.route.js"));
+tenantRouter.use("/warehouses", require("./routes/warehouses/r-warehouse/warehouse.route.js"));
+tenantRouter.use("/warehouses/input", require("./routes/warehouses/input/input.route.js"));
+tenantRouter.use("/supply/counterparty", require("./routes/supply/counterparty/counterparty.route.js"));
+tenantRouter.use("/supply/inbound", require("./routes/supply/inbound/inbound.route.js"));
+tenantRouter.use("/supply/rawmaterial", require("./routes/supply/rawmaterial/rawmaterial.route.js"));
+tenantRouter.use("/supply/accessories", require("./routes/supply/accessories/accessory.route.js"));
+tenantRouter.use("/supply/accessories/inbound", require("./routes/supply/accessories/inputinbound.route.js"));
+tenantRouter.use("/laboratory/analitic", require("./routes/laboratory/analitic/analitic.route.js"));
 
 ///settings
-app.use("/api/v1/settings/printer/template", require("./routes/settings/printer/pricePrinter.route.js"));
+app.use("/settings/printer/template", require("./routes/settings/printer/pricePrinter.route.js"));
 
-
+app.use("/api/v1", tenantRouter);
 // Xatoliklarni ushlash
 app.use(errorMiddleware);
 
@@ -111,20 +117,15 @@ const PORT = process.env.PORT || 8000;
 
 const START = async () => {
   try {
-    // MongoDB ulanishi
-    await mongoose.connect(process.env.DB_URL, { 
-      autoIndex: true,
-      serverSelectionTimeoutMS: 5000 
-    }); 
-    console.log("✅ DB ga ulanish muvaffaqiyatli");
+    // 1. Faqat asosiy bazaga ulanish (Bu yerda faqat 'tenants' jadvali bo'ladi)
+    await mongoose.connect(process.env.DB_URL); 
+    console.log("✅ Asosiy (Control) DB ulandi");
 
     server.listen(PORT, () => {
-      console.log(`🚀 Server ${isProd ? 'SERVERDA (PROD)' : 'LOKALDA (DEV)'} ishga tushdi`);
-      console.log(`🔗 Bazaviy URL: ${process.env.BASE_URL}`);
-      console.log(`📡 Port: ${PORT}`);
+      console.log(`🚀 Multi-tenant Backend ${PORT}-portda ishga tushdi`);
     });
   } catch (err) {
-    console.error(`❌ Xatolik yuz berdi: ${err.message}`);
+    console.error(`❌ Xatolik: ${err.message}`);
     process.exit(1);
   }
 };

@@ -26,4 +26,4 @@ const SaleHistorySchema = new mongoose.Schema({
   driverArrivedTime : {type : Date}
 },{ timestamps: true });
 SaleHistorySchema.index({ "items.partyNumber": 1 });
-module.exports = model("Sales", SaleHistorySchema);
+module.exports = SaleHistorySchema;

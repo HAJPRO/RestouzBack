@@ -1,10 +1,10 @@
-const Customer = require("../../../models/Customers/customer.model");
-const Order = require("../../../models/Sale/orders/order.model");
 const { ExportExcelCustomerOrders } = require("../../../utils/ExportExcel");
+
 class CustomerManagmentService {
-  async Create(data) {
-    const action = data.action;
-    const model = data.model;
+  async Create(req, data) {
+    const { Customer } = req.tenantModels;
+    const { action, model } = data;
+
     try {
       if (action === "create") {
         const customerExists = await Customer.exists({
@@ -12,13 +12,14 @@ class CustomerManagmentService {
         });
 
         if (customerExists) {
-          return { msg: "Bunday mijoz bazada mavjud !" };
+          return { msg: "Bunday mijoz bazada mavjud!" };
         } else {
-          const customer = new Customer(model);
-          const savedCustomer = await customer.save();
+          // Yangi obyekt yaratish
+          await Customer.create(model);
           return { status: "200", msg: "Mijoz muvaffaqiyatli qo'shildi!" };
         }
       }
+
       if (action === "update") {
         const { _id, ...updateData } = model;
         const updated = await Customer.findByIdAndUpdate(_id, updateData, {
@@ -27,7 +28,7 @@ class CustomerManagmentService {
         });
 
         if (!updated) {
-          return { msg: "O'zgartirish uchun orderId topilmadi!" };
+          return { msg: "O'zgartirish uchun mijoz topilmadi!" };
         }
 
         return { msg: "Mijoz muvaffaqiyatli o'zgartirildi!", data: updated };
@@ -39,75 +40,49 @@ class CustomerManagmentService {
     }
   }
 
-  async getAllLength(data) {
-    const all = await Customer.find().then((data) => {
-      if (data) {
-        return data.length;
-      } else {
-        return 0;
-      }
-    });
-    return { all };
-  }
-  async GetAll(data) {
+  async getAllLength(req) {
+    const { Customer } = req.tenantModels;
     try {
-      // if (data.filter) {
-      //   const all_length = await this.getAllLength(data);
+      // .find().length o'rniga countDocuments ishlatish samaraliroq
+      const all = await Customer.countDocuments();
+      return { all };
+    } catch (error) {
+      return { all: 0 };
+    }
+  }
 
-      //   const customers = await Customer.find({
-      //     $or: [
-      //       { fullname: { $regex: data.filter.fullname, $options: "i" } },
-      //       { phoneNumber: { $regex: data.filter.fullname, $options: "i" } }, // telefon raqam bo‘yicha izlash
-      //     ],
-      //   }).lean();
-
-      //   if (customers.length > 0) {
-      //     return { customers, all_length };
-      //   } else {
-      //     return {
-      //       status: 404,
-      //       msg: "Bunday mijoz topilmadi",
-      //       all_length,
-      //       customers: [],
-      //     };
-      //   }
-      // }
-
-      // if (data.status === 0) {
-      //   const customers = await Customer.find().lean();
-      //   return { customers };
-      // }
+  async GetAll(req, data) {
+    try {
       if (data) {
-        const all_length = await this.getAllLength(data);
-        const customers = await this.GetAllCustomers(data);
-        return { customers, all_length };
+        const { all } = await this.getAllLength(req);
+        const customers = await this.GetAllCustomers(req, data);
+        return { customers, all_length: all };
       } else {
-        return { msg: `Server xatosi: ${error.message} `, customers: [] };
+        return { msg: "Ma'lumotlar yetarli emas", customers: [] };
       }
     } catch (error) {
       return {
-        msg: `Server xatosi: ${error.message} `,
+        msg: `Server xatosi: ${error.message}`,
         customers: [],
-        all_length: {},
+        all_length: 0,
       };
     }
   }
-  // 📌 **Barcha mijozlar olish**
-  async GetAllCustomers(data) {
-    // const page = Number(data.page);
-    // const limit = Number(data.limit);
-    // const skip = (page - 1) * limit;
+
+  async GetAllCustomers(req, data) {
+    const { Customer } = req.tenantModels;
     try {
-      const customers = await Customer.find()
-console.log(data);
-      return customers.length ? customers : [];
+      // .lean() ma'lumotni tezroq o'qish uchun (faqat JSON qaytaradi)
+      const customers = await Customer.find().lean();
+      return customers || [];
     } catch (error) {
-      return { msg: `Server xatosi: ${error.message}` };
+      throw new Error(`Error fetching customers: ${error.message}`);
     }
   }
 
-  async DeleteById(data) {
-    const id = data.id;
+  async DeleteById(req, data) {
+    const { Customer } = req.tenantModels;
+    const { id } = data;
     try {
       const customer = await Customer.findByIdAndDelete(id);
       if (!customer) {
@@ -118,25 +93,29 @@ console.log(data);
       return { msg: `Server xatosi: ${error.message}` };
     }
   }
-  async GetById(data) {
-    const id = data.id;
+
+  async GetById(req, data) {
+    const { Customer } = req.tenantModels;
+    const { id } = data;
     try {
       const customer = await Customer.findById(id);
       if (!customer) {
         return { msg: "Bunday mijoz topilmadi!" };
       } else {
-        return { msg: "Mijoz muvaffaqiyatli aniqlandi !", customer };
+        return { msg: "Mijoz muvaffaqiyatli aniqlandi!", customer };
       }
     } catch (error) {
       return { msg: `Server xatosi: ${error.message}` };
     }
   }
-  async GetOrdersByCustomerId(data) {
-    const id = data.id;
+
+  async GetOrdersByCustomerId(req, data) {
+    const { Order } = req.tenantModels;
+    const { id } = data;
     try {
       const orders = await Order.find({ customerId: id })
-        .populate("driverId") // haydovchi haqida ma'lumotni olish
-        .populate("author") // author (buyurtmani kim yaratgan) haqida ma'lumot
+        .populate("driverId")
+        .populate("author")
         .populate("customerId");
 
       return { msg: "ok", status: 200, orders };
@@ -144,20 +123,19 @@ console.log(data);
       return { msg: `Server xatosi: ${error.message}` };
     }
   }
-  async ExportExcelDownload(data) {
-  try {
-    // Utils'dagi funksiyani chaqiramiz
-    const result = await ExportExcelCustomerOrders(data);
-    
-    if (!result || !result.buffer) {
-      throw new Error("Excel faylini yaratishda xatolik yuz berdi (Buffer empty)");
-    }
 
-    return result; // { buffer, filename } qaytaradi
-  } catch (error) {
-    throw new Error(error.message);
+  async ExportExcelDownload(req, data) {
+    
+    try {
+      const result = await ExportExcelCustomerOrders(req, data);
+      if (!result || !result.buffer) {
+        throw new Error("Excel faylini yaratishda xatolik yuz berdi");
+      }
+      return result;
+    } catch (error) {
+      throw new Error(error.message);
+    }
   }
-}
 }
 
 module.exports = new CustomerManagmentService();

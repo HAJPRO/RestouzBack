@@ -55,6 +55,6 @@ const templateSchema = new mongoose.Schema({
 });
 
 // Modelni eksport qilish
-const Template = mongoose.model('PricePrinterTemplate', templateSchema);
+const PricePrinterTemplate = mongoose.model('PricePrinterTemplate', templateSchema);
 
-module.exports = Template;
+module.exports = PricePrinterTemplate;

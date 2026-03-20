@@ -8,7 +8,7 @@ class WarehouseInputController {
    */
   async getModel(req, res, next) {
     try {
-      const result = await WarehouseInputService.getModel();
+      const result = await WarehouseInputService.getModel(req);
       
       if (!result.success) {
           return res.status(404).json(result);
@@ -38,7 +38,7 @@ class WarehouseInputController {
       // Front-end'dan 'action' kelsa, uni olamiz (masalan, 'create'). Aks holda 'create' default
       const action = req.body.action || 'create';
 
-      const result = await WarehouseInputService.create(payload, action);
+      const result = await WarehouseInputService.create(req,payload, action);
       
       if (!result.success) {
           return res.status(result.status || 400).json(result);
@@ -57,7 +57,7 @@ class WarehouseInputController {
     try {
       // GET so'rovlari uchun parametrlar req.query dan olinadi
       const query = { ...req.body, author: req.user.id };
-      const result = await WarehouseInputService.getAll(query);
+      const result = await WarehouseInputService.getAll(req,query);
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -72,7 +72,7 @@ class WarehouseInputController {
     try {
       // ID ni URL parametrlaridan olamiz
       const { id } = req.params;
-      const result = await WarehouseInputService.getOne(id);
+      const result = await WarehouseInputService.getOne(req,id);
       
       if (!result.success) {
           return res.status(404).json(result);
@@ -91,7 +91,7 @@ class WarehouseInputController {
     try {
       // Data: { partyId: ..., output: [...] }
       const data = { ...req.body, author: req.user.id };
-      const result = await WarehouseInputService.outputProduct(data);
+      const result = await WarehouseInputService.outputProduct(req,data);
       
       if (!result.success) {
           return res.status(result.status || 400).json(result);
@@ -112,7 +112,7 @@ class WarehouseInputController {
       const { id } = req.params;
       const { action } = req.query; // 4 - butun partiyani o'chirish
       
-      const result = await WarehouseInputService.deleteById(id, parseInt(action) || 4);
+      const result = await WarehouseInputService.deleteById(req,id, parseInt(action) || 4);
       
       if (!result.success) {
           return res.status(result.status || 404).json(result);
@@ -124,7 +124,7 @@ class WarehouseInputController {
   }
 async clearAllData(req, res, next) {
     try {
-      const result = await WarehouseInputService.clearAllData();
+      const result = await WarehouseInputService.clearAllData(req);
       res.status(200).json(result);
     } catch (error) {
       next(error);

@@ -1,34 +1,25 @@
-const mongoose = require("mongoose"); 
-const { model, Schema } = mongoose; 
+const mongoose = require("mongoose");
+
 const ReadyWarehouseSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  branchId: { type : String, required: true },
-  supplierId: { type : String, required: true },
   
-  // Faktura bilan bog'liqlik
-  inputId: { type: mongoose.Schema.Types.ObjectId, ref: 'InputHistory' },
-  partyNumber: { type: String, required: true }, // Faktura raqami
+  // IDlar string bo'lsa, xatolik chiqmasligi uchun default beramiz yoki requiredni olib tashlaymiz
+  branchId: {type: String, },
+  supplierId: { type: String, },
   
-  // Miqdorlar
-  initialQuantity: { type: Number, required: true }, // Kelgan miqdor (Masalan: 20 ta)
-  currentQuantity: { type: Number, required: true }, // Qolgan miqdor (Sotilgan sari kamayadi)
+  inputId: { type: mongoose.Schema.Types.ObjectId, ref: 'InboundHistory' },
+  partyNumber: { type: String, required: true }, 
   
-  // Narxlar (Aynan shu partiyaning narxi)
-  costPrice: { type: Number, required: true },
-  salePrice: { type: Number, required: true },
+  initialQuantity: { type: Number, required: true, min: 0 },
+  currentQuantity: { type: Number, required: true, min: 0 },
   
-  // FIFO uchun yaratilgan vaqti bo'yicha indeks
+  costPrice: { type: Number, required: true, min: 0 },
+  salePrice: { type: Number, required: true, min: 0 },
+  author : { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: { 
     type: String, 
     enum: ['active', 'sold_out'], 
-    default: 'active',
-    // index: true 
+    default: 'active'
   }
 }, { timestamps: true });
-
-// FIFO operatsiyalari uchun eng muhim indeks
-// ReadyWarehouseSchema.index({ product: 1, branch: 1, createdAt: 1 });
-
-module.exports = mongoose.models.ReadyWarehouse
-    ? mongoose.model('ReadyWarehouse') // Agar model mavjud bo'lsa, uni qaytaradi
-    : model("ReadyWarehouse", ReadyWarehouseSchema); // Aks holda, uni yaratadi
+module.exports = ReadyWarehouseSchema;

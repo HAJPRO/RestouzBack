@@ -102,4 +102,4 @@ const CounterpartySchema = new Schema({
 // Qidiruvni tezlashtirish uchun indekslar
 // SupplierSchema.index({ fullname: "text", phoneNumber: 1, inn: 1 });
 
-module.exports = model("Counterparty", CounterpartySchema);
+module.exports = CounterpartySchema;

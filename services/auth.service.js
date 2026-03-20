@@ -1,116 +1,115 @@
 const UserDto = require("../dtos/user.dto");
-const userModel = require("../models/user.model");
-const PermissionModel = require("../models/Admin/permission.model");
-const UserPermissionModel = require("../models/Admin/UserPermission.model");
-
 const bcrypt = require("bcryptjs");
 const tokenService = require("../services/token.service");
-// const mailService = require('./mail.service')
 const BaseError = require("../errors/base.error");
 
 class AuthService {
-  async register(data) {
-    const { username, password } = data;
-    const existUser = await userModel.findOne({ username });
+  /**
+   * 📝 Yangi foydalanuvchini ro'yxatdan o'tkazish (Tenant doirasida)
+   */
+  async register(req, data) {
+    const { User, Token } = req.tenantModels;
+    const { username, password, companyCode } = data;
+console.log(data)
+    // 1. Shu tenant ichida username band emasligini tekshirish
+    const existUser = await User.findOne({ username });
     if (existUser) {
-      throw BaseError.BadRequest(
-        `User with existing username ${username} already registered`
-      );
+      throw BaseError.BadRequest(`Username ${username} allaqachon band!`);
     }
 
+    // 2. Parolni xesh qilish va saqlash
     const hashPassword = await bcrypt.hash(password, 10);
-    data.password = hashPassword;
-    data.action = "login_successfully";
-    data.chatId = 1;
-    // Endi data to‘liq, shu jumladan password ham yangilangan holatda
-    const user = await userModel.create(data);
-    const userDto = new UserDto(user);
-
-    const tokens = tokenService.generateToken({ ...userDto });
-
-    await tokenService.saveToken(userDto.id, tokens.refreshToken);
-
-    return { msg: "Muvaffaqiyatli qo'shildi", user: userDto, ...tokens };
-  }
-  async update(data) {
-
-    const updateUser = await userModel.findByIdAndUpdate(data.id, data.model, { new: true })
-    return {
-      msg: "Muvaffaqiyatli o'zgartirildi"
-    };
-  }
-
-async login(username, password) {
-    // 1. Userni topish va Role -> Permission zanjirini ochish (Deep Populate)
-    const user = await userModel.findOne({ username }).populate({
-        path: 'roles',
-        model: 'Role',
-        populate: {
-            path: 'permissions',
-            model: 'Permission'
-        }
+    const user = await User.create({
+      ...data,
+      password: hashPassword,
+      action: "login_successfully",
+      chatId: 1
     });
 
-    if (!user) throw BaseError.BadRequest("Username yoki parol xato");
+    const userDto = new UserDto(user);
+    // Tokenga companyCode qo'shiladi, shunda keyingi so'rovlarda qaysi bazaga ulanishni bilamiz
+    const tokens = tokenService.generateToken({ ...userDto, companyCode });
 
-    // 2. Parolni tekshirish
+    await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
+
+    return { msg: "Foydalanuvchi qo'shildi", user: userDto, ...tokens };
+  }
+
+  /**
+   * 🔑 Login qilish
+   */
+  async login(req, username, password) {
+    const { User, Token } = req.tenantModels;
+    console.log(User);
+    
+    const { companyCode } = req.body;
+
+    if (!User || !Token) {
+      throw BaseError.BadRequest("Tenant modellari yuklanmadi");
+    }
+
+    const user = await User.findOne({ username }).populate('roles');
+    if (!user) throw BaseError.BadRequest("Foydalanuvchi topilmadi");
+
     const isPassword = await bcrypt.compare(password, user.password);
-    if (!isPassword) throw BaseError.BadRequest("Username yoki parol xato");
+    if (!isPassword) throw BaseError.BadRequest("Parol noto'g'ri");
 
-    // 3. UserDto yaratish (ichida roles va permissions'ni formatlaydi)
     const userDto = new UserDto(user);
+    const tokens = tokenService.generateToken({ ...userDto, companyCode });
 
-    // 4. Token generatsiya qilish 
-    // MUHIM: Permissions va Roles bu yerda string massivi bo'lishi shart
-    const tokens = tokenService.generateToken({
-        id: userDto.id,
-        username: userDto.username,
-        roles: userDto.roles, 
-        permissions: userDto.permissions 
-    });
+    await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
 
-    await tokenService.saveToken(userDto.id, tokens.refreshToken);
-
-    return { user: userDto, ...tokens };
-}
-
-  async logout(refreshToken) {
-    return await tokenService.removeToken(refreshToken);
-  }
-  async activation(userId) {
-    const user = await userModel.findById(userId);
-
-    if (!user) {
-      throw BaseError.BadRequest("User is not defined");
-    }
-
-    user.isActivated = true;
-    await user.save();
+    return { user: userDto, ...tokens, companyCode };
   }
 
-  async refresh(refreshToken) {
-    if (!refreshToken) {
-      throw BaseError.UnauthorizedError("Bad authorization");
-    }
+  /**
+   * 🔄 Tokenni yangilash (Refresh)
+   */
+  async refresh(req, refreshToken) {
+    const { User, Token } = req.tenantModels;
+    const { companyCode } = req.body; // Yoki tokendan olinadi
+
+    if (!refreshToken) throw BaseError.UnauthorizedError();
 
     const userPayload = tokenService.validateRefreshToken(refreshToken);
-    const tokenDb = await tokenService.findToken(refreshToken);
+    const tokenDb = await tokenService.findToken(refreshToken, Token);
+
     if (!userPayload || !tokenDb) {
-      throw BaseError.UnauthorizedError("Bad authorization");
+      throw BaseError.UnauthorizedError("Sessiya muddati tugagan");
     }
 
-    const user = await userModel.findById(userPayload.id);
+    const user = await User.findById(userPayload.id);
     const userDto = new UserDto(user);
 
-    const tokens = tokenService.generateToken({ ...userDto });
-
-    await tokenService.saveToken(userDto.id, tokens.refreshToken);
+    const tokens = tokenService.generateToken({ ...userDto, companyCode });
+    await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
 
     return { user: userDto, ...tokens };
   }
 
-  async getUsers() {
-    return await userModel.find();
+  /**
+   * 📝 Foydalanuvchi ma'lumotlarini tahrirlash
+   */
+  async update(req, data) {
+    const { User } = req.tenantModels;
+    await User.findByIdAndUpdate(data.id, data.model, { new: true });
+    return { msg: "Muvaffaqiyatli o'zgartirildi" };
+  }
+
+  /**
+   * 🚪 Tizimdan chiqish
+   */
+  async logout(req, refreshToken) {
+    const { Token } = req.tenantModels;
+    return await tokenService.removeToken(refreshToken, Token);
+  }
+
+  /**
+   * 👥 Barcha foydalanuvchilarni olish
+   */
+  async getUsers(req) {
+    const { User } = req.tenantModels;
+    return await User.find().select("-password");
   }
 }
 

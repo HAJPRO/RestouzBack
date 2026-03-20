@@ -12,7 +12,7 @@ class SaleposManagmentController {
     async Create(req, res, next) {
         try {
             // Sotuvchi (Kassir) ID sini ma'lumotlarga qo'shish
-            const data = await SaleposManagmentService.Create({ 
+            const data = await SaleposManagmentService.Create(req,{ 
                 author: req.user.id, 
                 payload : req.body 
             });
@@ -25,7 +25,7 @@ class SaleposManagmentController {
 async GetAll(req, res, next) {
         try {
             // Query parametrlari (page, limit, filter) req.query orqali kelishi kerak
-            const data = await SaleposManagmentService.GetAll({payload: req.body,author : req.user.id});
+            const data = await SaleposManagmentService.GetAll(req,{payload: req.body,author : req.user.id});
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -34,7 +34,7 @@ async GetAll(req, res, next) {
 async GetByCustomerId(req, res, next) {
         try {
             // Query parametrlari (page, limit, filter) req.query orqali kelishi kerak
-            const data = await SaleposManagmentService.GetByCustomerId({id:req.body.id,author : req.user.id});
+            const data = await SaleposManagmentService.GetByCustomerId(req,{id:req.body.id,author : req.user.id});
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -43,7 +43,7 @@ async GetByCustomerId(req, res, next) {
 async GetByEmployeeId(req, res, next) {
         try {
             // Query parametrlari (page, limit, filter) req.query orqali kelishi kerak
-            const data = await SaleposManagmentService.GetByEmployeeId({id:req.body.id,author : req.user.id});
+            const data = await SaleposManagmentService.GetByEmployeeId(req,{id:req.body.id,author : req.user.id});
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -58,7 +58,7 @@ async GetByEmployeeId(req, res, next) {
         try {
             // req.params.id da kelgan ID ni ishlatish maqsadga muvofiq
             const id = req.params.id || req.body.id; 
-            const data = await SaleposManagmentService.GetSaleById({ id });
+            const data = await SaleposManagmentService.GetSaleById(req,{ id });
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -71,7 +71,7 @@ async GetByEmployeeId(req, res, next) {
      */
     async UpdateById(req, res, next) {
         try {
-            const data = await SaleposManagmentService.UpdateSaleStatus({ 
+            const data = await SaleposManagmentService.UpdateSaleStatus(req,{ 
                 author: req.user.id, // Yangilashni amalga oshirgan shaxs
                 orderId: req.params.id, // Agar ID URL dan kelsa
                 ...req.body 
@@ -94,7 +94,7 @@ async GetByEmployeeId(req, res, next) {
      */
     async GetAllDrivers(req, res, next) {
         try {
-            const data = await SaleposManagmentService.GetAllDrivers(req.query);
+            const data = await SaleposManagmentService.GetAllDrivers(req,req.query);
             res.status(200).json(data);
         } catch (error) {
             next(error);
@@ -107,7 +107,7 @@ async GetByEmployeeId(req, res, next) {
      */
     async DeleteById(req, res, next) {
         try {
-            const data = await SaleposManagmentService.DeleteSale({
+            const data = await SaleposManagmentService.DeleteSale(req,{
                 id: req.params.id, // Agar ID URL dan kelsa
                 author : req.user.id 
             });
@@ -146,7 +146,7 @@ async handleExcelExport(req, res) {
     try {
         // 1. Servisdan ma'lumotni olish
         // req.body - bu frontenddan kelayotgan filterlangan ma'lumotlar
-        const result = await SaleposManagmentService.handleExcelExport(req.body);
+        const result = await SaleposManagmentService.handleExcelExport(req,req.body);
 
         // 2. Universal helper orqali javob qaytarish
         return sendExcelResponse(res, result);

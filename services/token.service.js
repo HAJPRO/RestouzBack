@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const tokenModel = require("../models/token.model");
+// const tokenModel = require("../models/token.model"); <-- BU QATORNI O'CHIRING (Kerak emas)
 
 class TokenService {
   generateToken(payload) {
@@ -11,26 +11,30 @@ class TokenService {
     });
     return { accessToken, refreshToken };
   }
-  async saveToken(userId, refreshToken) {
-    const existToken = await tokenModel.findOne({ user: userId });
+
+  // MUHIM: Har bir funksiyaga uchinchi parametr sifatida modelni uzatamiz
+  async saveToken(userId, refreshToken, TokenModel) {
+    // Endi tepadagi 'tokenModel' emas, argumentdan kelgan 'TokenModel'ni ishlatamiz
+    const existToken = await TokenModel.findOne({ user: userId });
     if (existToken) {
       existToken.refreshToken = refreshToken;
       return existToken.save();
     }
-    const token = await tokenModel.create({ user: userId, refreshToken });
+    const token = await TokenModel.create({ user: userId, refreshToken });
     return token;
   }
-  async removeToken(refreshToken) {
-    return await tokenModel.findOneAndDelete({ refreshToken });
+
+  async removeToken(refreshToken, TokenModel) {
+    return await TokenModel.findOneAndDelete({ refreshToken });
   }
 
-  async findToken(refreshToken) {
-    return await tokenModel.findOne({ refreshToken });
+  async findToken(refreshToken, TokenModel) {
+    return await TokenModel.findOne({ refreshToken });
   }
 
   validateRefreshToken(token) {
     try {
-      return jwt.verify(token, process.env.JWT_REFRESH_KEY);
+      return jwt.verify(token, process.env.JWT_REFRESH_TOKEN); // JWT_REFRESH_KEY emas, TOKEN bo'lishi kerak sizda tepadagi bilan bir xil
     } catch (error) {
       return null;
     }

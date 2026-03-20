@@ -10,6 +10,7 @@ const upload = require("../../../middlewares/multer.middleware.js");
 
 // Controller
 const ProductManagmentController = require("../../../controllers/sale/products/product.controller.js");
+const tenantMiddleware = require("../../../middlewares/db/tenant.middleware.js");
 
 // --- 1. Yaratish (POST) ---
 // upload.single("image") - Frontend'dagi FormData kaliti bilan bir xil bo'lishi shart

@@ -7,7 +7,7 @@ class LaboratoryAnaliticController {
    */
   async GetAll(req, res) {
     try {
-      const inbound = await LaboratoryAnaliticService.GetAllAnalytics(req.body);
+      const inbound = await LaboratoryAnaliticService.GetAllAnalytics(req,req.body);
       res.json({
         success: true,
         data: inbound
@@ -22,7 +22,7 @@ class LaboratoryAnaliticController {
  // analitic.controller.js
 async GeneratePdf(req, res) {
     try {
-        const pdfBuffer = await LaboratoryAnaliticService.downloadLaboratoryReport(req.body);
+        const pdfBuffer = await LaboratoryAnaliticService.downloadLaboratoryReport(req,req.body);
         
         // Universal helperdan foydalanamiz
         const fileName = `Analiz_Report_${req.body.id || Date.now()}`;

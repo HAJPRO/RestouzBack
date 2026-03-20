@@ -1,8 +1,10 @@
-const Order = require('../../../models/Sale/orders/sales.model');
+// ❌ Statik importni o'chirib tashlaymiz
+// const Order = require('../../../models/Sale/orders/sales.model');
 const moment = require('moment-timezone');
 
 class SaleStatisticService {
-    async getSaleStatistics(query) {
+    async getSaleStatistics(req, query) { // ✅ req parametri qo'shildi
+        const { Order } = req.tenantModels; // ✅ Dinamik model
         const { period, start, end, timezone = 'Asia/Tashkent' } = query;
         let startDate, endDate;
 
@@ -11,7 +13,6 @@ class SaleStatisticService {
             startDate = moment.tz(timezone).startOf('day').toDate();
             endDate = moment.tz(timezone).endOf('day').toDate();
         } else if (period === 'week') {
-            // Haftani aynan Dushanbadan boshlash (ISO week)
             startDate = moment.tz(timezone).startOf('isoWeek').toDate();
             endDate = moment.tz(timezone).endOf('day').toDate();
         } else if (period === 'month') {
@@ -59,13 +60,15 @@ class SaleStatisticService {
                     "topDrivers": [
                         { $group: { _id: "$driverId", count: { $sum: 1 }, totalSales: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } } } },
                         { $sort: { totalSales: -1 } }, { $limit: 10 },
+                        // ✅ Tenant bazasidagi 'users' kolleksiyasiga lookup
                         { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "info" } },
                         { $unwind: { path: "$info", preserveNullAndEmptyArrays: true } }
                     ],
                     "topCustomers": [
                         { $group: { _id: "$customerId", totalSales: { $sum: { $convert: { input: "$totalAmount", to: "double", onError: 0, onNull: 0 } } }, count: { $sum: 1 } } },
                         { $sort: { totalSales: -1 } }, { $limit: 10 },
-                        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "info" } },
+                        // ✅ Tenant bazasidagi 'customers' kolleksiyasiga lookup (initModels'dagi nomga e'tibor bering)
+                        { $lookup: { from: "customers", localField: "_id", foreignField: "_id", as: "info" } },
                         { $unwind: { path: "$info", preserveNullAndEmptyArrays: true } }
                     ],
                     "topSellers": [
@@ -82,9 +85,9 @@ class SaleStatisticService {
     }
 
     formatResponse(data, period, startDate, endDate, timezone) {
+        if (!data) return { metrics: [], chart: { labels: [], series: [] } };
+
         const rawMetrics = data.metrics[0] || { totalSales: 0, totalProfit: 0, orderCount: 0 };
-        
-        // Bo'sh kunlarni 0 bilan to'ldirish
         const filledChart = this.fillMissingChartData(data.chartData, period, startDate, endDate, timezone);
 
         return {
@@ -96,7 +99,7 @@ class SaleStatisticService {
             chart: filledChart,
             topDrivers: data.topDrivers.map(d => ({ info: { fullname: d.info?.fullname || "Noma'lum" }, count: d.count, totalSales: d.totalSales })),
             topCustomers: data.topCustomers.map(c => ({ info: { fullname: c.info?.fullname || "Noma'lum" }, totalSales: c.totalSales, count: c.count })),
-            topSellers: data.topSellers.map(s => ({ info: { fullname: s.info?.fullname || "Noma'lum" }, totalSales: s.totalSales, count: s.count }))
+            topSellers: data.topSellers.map(s => ({ info: { fullname: s.info?.fullname || s.info?.username || "Noma'lum" }, totalSales: s.totalSales, count: s.count }))
         };
     }
 
@@ -109,7 +112,6 @@ class SaleStatisticService {
         let current = moment(startDate).tz(timezone);
         const last = moment(endDate).tz(timezone);
 
-        // 7 kunlik massivni aylanib chiqish (Dushanbadan Yakshanbagacha)
         while (current <= last) {
             let labelKey;
             let displayLabel;
@@ -124,7 +126,6 @@ class SaleStatisticService {
                 current.add(1, 'month');
             } else {
                 labelKey = current.format("YYYY-MM-DD");
-                // HAFTA FILTRIDA KUN NOMINI CHIQARADI
                 displayLabel = period === 'week' ? this.getUzDayName(current.day()) : labelKey;
                 current.add(1, 'day');
             }
@@ -134,7 +135,6 @@ class SaleStatisticService {
             sales.push(val.sales);
             profit.push(val.profit);
 
-            // Cheklovlar
             if (period === 'day' && labels.length >= 24) break;
             if (period === 'week' && labels.length >= 7) break;
             if (period === 'month' && labels.length >= 12) break;
@@ -154,7 +154,6 @@ class SaleStatisticService {
     }
 
     getUzDayName(dIdx) {
-        // MongoDB va moment.js dagi kun indeksi (0-Yakshanba, 1-Dushanba...)
         return ["Yak", "Du", "Se", "Cho", "Pa", "Ju", "Sha"][dIdx];
     }
 }

@@ -1,11 +1,19 @@
-const RoleModel = require("../../models/Admin/role.model");
+// ❌ Statik importni o'chirib tashlang
+// const RoleModel = require("../../models/Admin/role.model");
 
 class RoleService {
-  async Create(data) {
-    console.log(data);
-    
+  /**
+   * Yangi rol yaratish
+   * @param {Object} req - Express so'rov obyekti (tenantModels uchun)
+   * @param {Object} data - Rol ma'lumotlari (name, value, permissions)
+   */
+  async Create(req, data) {
+    // ✅ Modellarni dinamik ravishda req ichidan olamiz
+    const { Role } = req.tenantModels;
+
     try {
-      const isExists = await RoleModel.findOne({
+      // Bir xil nom yoki qiymatli rol borligini tekshirish
+      const isExists = await Role.findOne({
         $or: [
           { name: data.name },
           { value: data.value }
@@ -13,28 +21,45 @@ class RoleService {
       });
 
       if (!isExists) {
-        const Role = new RoleModel(data);
-        const role = await RoleModel.create(Role);
-        return { msg: "Rol muvaffaqiyatli qo‘shildi!", role };
+        // ✅ Yangi rolni yaratish
+        const role = await Role.create(data);
+        return { 
+          status: 201, 
+          msg: "Rol muvaffaqiyatli qo‘shildi!", 
+          role 
+        };
       } else {
-        return { msg: "Bunday nomdagi rol allaqachon mavjud." };
+        return { 
+          status: 400, 
+          msg: "Bunday nomdagi yoki qiymatdagi rol allaqachon mavjud." 
+        };
       }
     } catch (err) {
-      return { msg: "Xatolik yuz berdi", error: err };
+      console.error("Role Create Error:", err.message);
+      return { msg: "Xatolik yuz berdi", error: err.message };
     }
   }
 
-  async GetAll() {
+  /**
+   * Barcha rollarni olish
+   * @param {Object} req - Express so'rov obyekti
+   */
+  async GetAll(req) {
+    const { Role } = req.tenantModels;
+
     try {
-      const roles = await RoleModel.find()
-      return { msg: "Barchasi", roles }
+      // .populate("permissions") - agar rolda ruxsatnomalar IDlari bo'lsa, ularni ham tortib keladi
+      const roles = await Role.find().lean();
+      return { 
+        status: 200, 
+        msg: "Barcha rollar ro'yxati", 
+        roles 
+      };
     } catch (err) {
-      return { msg: "Xatolik yuz berdi", error: err };
+      console.error("Role GetAll Error:", err.message);
+      return { msg: "Xatolik yuz berdi", error: err.message };
     }
   }
-
 }
-
-
 
 module.exports = new RoleService();

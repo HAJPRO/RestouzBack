@@ -54,4 +54,4 @@ const OrderSchema = new Schema(
   }
 );
 
-module.exports = model("Order", OrderSchema);
+module.exports = OrderSchema;

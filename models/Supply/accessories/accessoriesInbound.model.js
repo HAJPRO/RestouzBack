@@ -60,4 +60,4 @@ const AccessoriesInboundSchema = new mongoose.Schema({
 
 
 
-module.exports = mongoose.model('AccessoriesInbound', AccessoriesInboundSchema);
+module.exports = AccessoriesInboundSchema;

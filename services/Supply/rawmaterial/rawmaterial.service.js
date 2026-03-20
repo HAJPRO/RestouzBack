@@ -1,168 +1,129 @@
-const RawMaterial = require('../../../models/Supply/rawmaterial/rawmaterial.model');
 const { generateQRCode } = require('../../../utils/generater');
 
 class RawMaterialService {
     /**
-     * Yaratish va Tahrirlash mantiqi
+     * Yaratish va Tahrirlash mantiqi (Tenant-aware)
+     * @param {Object} req - Tenant modellari va user ma'lumotlari uchun
      * @param {Object} data - { action: "create/update", model: { ... } }
-     * @param {String} userId - Amallarni bajargan foydalanuvchi IDsi
      */
-async create(data, userId) {
-    const { action, model } = data;
+    async create(req, data) {
+        const { RawMaterial } = req.tenantModels;
+        const userId = req.user?._id;
+        const { action, model } = data;
 
-    try {
-        // --- 1. RASM HAJMINI VA FORMATINI TEKSHIRISH ---
-        if (model.image && typeof model.image === 'string' && model.image.startsWith('data:image')) {
-            // Base64 dan taxminiy hajmni (byte) hisoblash
-            const base64Length = model.image.length;
-            const sizeInBytes = (base64Length * 3) / 4;
-            const sizeInMB = sizeInBytes / (1024 * 1024);
+        try {
+            // --- 1. RASM HAJMINI TEKSHIRISH ---
+            if (model.image?.startsWith('data:image')) {
+                const sizeInMB = (model.image.length * 3) / (4 * 1024 * 1024);
+                if (sizeInMB > 5) {
+                    return { status: "400", msg: `Rasm hajmi juda katta (${sizeInMB.toFixed(2)} MB).` };
+                }
+            }
 
-            // 5MB limit (Baza xavfsizligi va tezligi uchun)
-            if (sizeInMB > 5) {
-                return { 
-                    status: "400", 
-                    msg: `Rasm hajmi juda katta (${sizeInMB.toFixed(2)} MB). Iltimos, 5MB dan kichik rasm yuklang.` 
+            // --- 2. YARATISH (CREATE) MANTIQI ---
+            if (action === "create") {
+                const materialExists = await RawMaterial.exists({
+                    isActive: true,
+                    $or: [
+                        { name: { $regex: new RegExp(`^${model.name}$`, "i") } },
+                        { code: model.code }
+                    ]
+                });
+
+                if (materialExists) {
+                    return { status: "400", msg: "Bunday xomashyo nomi yoki kodi allaqachon mavjud!" };
+                }
+
+                if (model.code) {
+                    model.qr = await generateQRCode(model.code);
+                }
+
+                const sanitizedData = {
+                    ...model,
+                    isActive: true,
+                    createdBy: userId,
+                    costPrice: Math.abs(Number(model.costPrice) || 0),
+                    totalStock: Math.max(0, Number(model.totalStock) || 0),
+                    // Turi bo'yicha texnik maydonlarni filtrlash
+                    ...this._filterTechnicalFields(model)
                 };
+
+                const saved = await RawMaterial.create(sanitizedData);
+                return { status: "200", msg: "Xomashyo muvaffaqiyatli saqlandi!", data: saved };
             }
+
+            // --- 3. TAHRIRLASH (UPDATE) MANTIQI ---
+            if (action === "update") {
+                const { _id, ...updateData } = model;
+                if (!_id) return { status: "400", msg: "ID ko'rsatilmagan!" };
+
+                const currentMaterial = await RawMaterial.findById(_id);
+                if (!currentMaterial) return { status: "404", msg: "Resurs topilmadi!" };
+
+                const duplicateCheck = await RawMaterial.exists({
+                    _id: { $ne: _id },
+                    isActive: true,
+                    $or: [
+                        { name: { $regex: new RegExp(`^${updateData.name}$`, "i") } },
+                        { code: updateData.code }
+                    ]
+                });
+
+                if (duplicateCheck) return { status: "400", msg: "Nomi yoki kodi boshqa resursda band!" };
+
+                if (updateData.code && updateData.code !== currentMaterial.code) {
+                    updateData.qr = await generateQRCode(updateData.code);
+                }
+
+                // Sonli qiymatlarni tozalash
+                if (updateData.costPrice !== undefined) updateData.costPrice = Math.abs(Number(updateData.costPrice));
+                if (updateData.totalStock !== undefined) updateData.totalStock = Math.max(0, Number(updateData.totalStock));
+
+                const updated = await RawMaterial.findByIdAndUpdate(
+                    _id, 
+                    { $set: { ...updateData, ...this._filterTechnicalFields(updateData) } }, 
+                    { new: true, runValidators: true }
+                );
+
+                return { status: "200", msg: "Ma'lumotlar yangilandi!", data: updated };
+            }
+
+        } catch (error) {
+            console.error("RawMaterial Service Error:", error);
+            return { status: "500", msg: "Serverda xatolik!", error: error.message };
         }
+    }
 
-        // --- 2. YARATISH (CREATE) MANTIQI ---
-        if (action === "create") {
-            // Dublikat tekshiruvi: Nomi yoki Kodi bo'yicha
-            const materialExists = await RawMaterial.exists({
-                isActive: true,
-                $or: [
-                    { name: { $regex: new RegExp(`^${model.name}$`, "i") } }, // Registrga qaramasdan tekshirish
-                    { code: model.code }
-                ]
-            });
+    /**
+     * Xomashyo turi bo'yicha texnik maydonlarni ajratish (Helper)
+     */
+    _filterTechnicalFields(model) {
+        const isLiquid = ['raw_milk', 'ingredient_liquid'].includes(model.type);
+        const isPlastic = model.type === 'pkg_plastic';
 
-            if (materialExists) {
-                return { status: "400", msg: "Bunday xomashyo nomi yoki kodi tizimda allaqachon mavjud!" };
-            }
-
-            // QR kod yaratish
-            if (model.code) {
-                model.qr = await generateQRCode(model.code);
-            }
-
-            // Ma'lumotlarni sanitizatsiya qilish (tozalash)
-            const sanitizedData = {
-                ...model,
-                isActive: true,
-                createdBy: userId,
-                image: model.image || null,
-                costPrice: Math.abs(Number(model.costPrice) || 0),
-                totalStock: Math.max(0, Number(model.totalStock) || 0),
-                
-                // Turi bo'yicha texnik maydonlarni ajratish
-                volume: model.type === 'pkg_plastic' ? Number(model.volume) : null,
-                volumeUnit: model.type === 'pkg_plastic' ? model.volumeUnit : null,
-                fatContent: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.fatContent) : null,
-                density: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.density) : null,
-                temperature: ['raw_milk', 'ingredient_liquid'].includes(model.type) ? Number(model.temperature) : null
-            };
-
-            const newMaterial = new RawMaterial(sanitizedData);
-            const saved = await newMaterial.save();
-            
-            return { status: "200", msg: "Yangi xomashyo muvaffaqiyatli saqlandi!", data: saved };
-        }
-
-        // --- 3. TAHRIRLASH (UPDATE) MANTIQI ---
-        if (action === "update") {
-            const { _id, ...updateData } = model;
-
-            if (!_id) return { status: "400", msg: "ID ko'rsatilmagan!" };
-
-            const currentMaterial = await RawMaterial.findById(_id);
-            if (!currentMaterial) {
-                return { status: "404", msg: "Tahrirlanayotgan resurs topilmadi!" };
-            }
-
-            // Tahrirlashda dublikat tekshiruvi (o'zidan tashqari boshqa resurslar bilan)
-            const duplicateCheck = await RawMaterial.exists({
-                _id: { $ne: _id },
-                isActive: true,
-                $or: [
-                    { name: { $regex: new RegExp(`^${updateData.name}$`, "i") } },
-                    { code: updateData.code }
-                ]
-            });
-
-            if (duplicateCheck) {
-                return { status: "400", msg: "Yangi nom yoki kod boshqa resursda ishlatilmoqda!" };
-            }
-
-            // QR kodni yangilash (kod o'zgargan bo'lsa)
-            if (updateData.code && updateData.code !== currentMaterial.code) {
-                updateData.qr = await generateQRCode(updateData.code);
-            }
-
-            // Agar yangi rasm kelmasa, eskisini saqlab qolamiz
-            if (!updateData.image) {
-                delete updateData.image; 
-            }
-
-            // Sonli qiymatlarni tahrirlash paytida ham tozalash
-            if (updateData.costPrice !== undefined) updateData.costPrice = Math.abs(Number(updateData.costPrice));
-            if (updateData.totalStock !== undefined) updateData.totalStock = Math.max(0, Number(updateData.totalStock));
-
-            const updated = await RawMaterial.findByIdAndUpdate(
-                _id, 
-                { $set: updateData }, 
-                { new: true, runValidators: true }
-            );
-
-            return { status: "200", msg: "Ma'lumotlar yangilandi!", data: updated };
-        }
-
-    } catch (error) {
-        console.error("RawMaterial Service Error:", error);
-
-        // Mongoose validation xatolarini tutish
-        if (error.name === 'ValidationError') {
-            const messages = Object.values(error.errors).map(val => val.message);
-            return { status: "400", msg: "Validatsiya xatosi!", error: messages };
-        }
-
-        // Boshqa kutilmagan xatolar
-        return { 
-            status: "500", 
-            msg: "Serverda kutilmagan xatolik yuz berdi!", 
-            error: error.message 
+        return {
+            volume: isPlastic ? Number(model.volume) : null,
+            volumeUnit: isPlastic ? model.volumeUnit : null,
+            fatContent: isLiquid ? Number(model.fatContent) : null,
+            density: isLiquid ? Number(model.density) : null,
+            temperature: isLiquid ? Number(model.temperature) : null
         };
     }
-}
 
-    // 3. Hammasini olish
-    async getAll(filter = {}) {
-        try {
-            return await RawMaterial.find({ ...filter, isActive: true })
-                .sort({ createdAt: -1 })
-                .lean();
-        } catch (error) {
-            throw new Error("Ma'lumotlarni olishda xatolik: " + error.message);
-        }
+    // --- 4. LISTING VA DELETE ---
+    async getAll(req, filter = {}) {
+        const { RawMaterial } = req.tenantModels;
+        return await RawMaterial.find({ ...filter, isActive: true }).sort({ createdAt: -1 }).lean();
     }
 
-    // 4. Bitta ID bo'yicha olish
-    async getById(id) {
+    async getById(req, id) {
+        const { RawMaterial } = req.tenantModels;
         return await RawMaterial.findOne({ _id: id, isActive: true }).lean();
     }
 
-    // 5. Arxivlash (Soft Delete)
-    async delete(id) {
-        try {
-            return await RawMaterial.findByIdAndUpdate(
-                id, 
-                { isActive: false }, 
-                { new: true }
-            );
-        } catch (error) {
-            throw new Error("O'chirishda xatolik yuz berdi");
-        }
+    async delete(req, id) {
+        const { RawMaterial } = req.tenantModels;
+        return await RawMaterial.findByIdAndUpdate(id, { isActive: false }, { new: true });
     }
 }
 

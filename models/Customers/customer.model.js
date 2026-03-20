@@ -79,4 +79,4 @@ const CustomerSchema = new Schema({
 
 }, { timestamps: true });
 
-module.exports = model("Customer", CustomerSchema);
+module.exports =  CustomerSchema;

@@ -1,134 +1,125 @@
-const Inbound = require('../../../models/Supply/Inbound/inbound.model');
-const Product = require('../../../models/Sale/products/product.model');
-const Loboratory = require('../../../models/Laboratory/laboratory.model');
 const { generateUniqueLabNumber } = require('../../../utils/generateUniqueNumber');
-
 
 class InboundService {
   /**
-   * Yangi kirim hujjatini yaratish
+   * Partiya (Batch) raqamini generatsiya qilish
    */
-   generateBatchNumber() {
-  const prefix = "CON";
-  const year = new Date().getFullYear();
-  const min = 100000000;
-  const max = 999999999;
-  const randomNumber = Math.floor(Math.random() * (max - min + 1)) + min;
-  return `${prefix}-${year}-${randomNumber}`;
-}
+  generateBatchNumber() {
+    const prefix = "CON";
+    const year = new Date().getFullYear();
+    const randomNumber = Math.floor(100000000 + Math.random() * 900000000);
+    return `${prefix}-${year}-${randomNumber}`;
+  }
 
-async createInbound(data, userId) {
-  try {
-    // 1. Umumiy summani qayta hisoblash va Har bir itemga Batch Number biriktirish
-    let calculatedTotalAmount = 0;
-    
-    const processedItems = data.items.map(item => {
-      calculatedTotalAmount += (item.qty * item.costPrice);
+  /**
+   * 📥 Yangi kirim hujjatini yaratish
+   */
+  async createInbound(req, data, userId) {
+    const { SupplyInbound, Product } = req.tenantModels;
+    try {
+      let calculatedTotalAmount = 0;
       
-      return {
-        ...item,
-        // Agar front-enddan batchNumber kelmagan bo'lsa, back-endda generatsiya qilamiz
-      };
-    });
-
-    // 2. Yangi inbound yaratish
-    const newInbound = new Inbound({
-      ...data,
-      items: processedItems, // Batch number qo'shilgan yangi array
-      totalAmount: calculatedTotalAmount,
-       code : this.generateBatchNumber(),
-
-      receivedBy: userId,
-      status: 'Completed'
-    });
-
-    // 3. Ombor qoldig'ini yangilash (Stock Management)
-    const stockUpdates = processedItems.map(item => {
-      return Product.findByIdAndUpdate(item.productId, {
-        $inc: { totalStock: item.qty },
-        $set: { lastPurchasePrice: item.costPrice }
+      const processedItems = data.items.map(item => {
+        const qty = Number(item.qty) || 0;
+        const price = Number(item.costPrice) || 0;
+        calculatedTotalAmount += (qty * price);
+        
+        return { ...item, qty, costPrice: price };
       });
-    });
 
-    // Barcha yangilanishlarni parallel bajarish
-    await Promise.all(stockUpdates);
-    
-    // Hujjatni saqlash
-    return await newInbound.save();
-    
-  } catch (error) {
-    throw new Error(`Kirimni saqlashda xato: ${error.message}`);
+      const newInbound = new SupplyInbound({
+        ...data,
+        items: processedItems,
+        totalAmount: calculatedTotalAmount,
+        code: this.generateBatchNumber(),
+        receivedBy: userId,
+        status: 'Completed' // Laboratoriya tasdig'ini kutayotgan holat
+      });
+
+      // Ombor qoldig'ini yangilash
+      const stockUpdates = processedItems.map(item => {
+        return Product.findByIdAndUpdate(item.productId, {
+          $inc: { totalStock: item.qty },
+          $set: { lastPurchasePrice: item.costPrice }
+        });
+      });
+
+      await Promise.all([...stockUpdates, newInbound.save()]);
+      return newInbound;
+      
+    } catch (error) {
+      throw new Error(`Kirimni saqlashda xato: ${error.message}`);
+    }
   }
-}
 
   /**
-   * Barcha kirimlar ro'yxatini olish (Filtrlar bilan)
+   * 📊 Barcha kirimlar ro'yxati
    */
-  async getAllInbounds() {
-    const inbounds = await Inbound.find()
+  async getAllInbounds(req) {
+    const { SupplyInbound } = req.tenantModels;
+    return await SupplyInbound.find()
       .populate('branchId', 'name')
-      .populate('counterparty')
-      .populate('receivedBy')
-      .sort({ createdAt: -1 });
-      return inbounds
+      .populate('counterparty', 'fullname phoneNumber')
+      .populate('receivedBy', 'fullname')
+      .sort({ createdAt: -1 })
+      .lean();
   }
 
   /**
-   * ID bo'yicha kirimni topish
+   * 🔬 Laboratoriya tahlilini saqlash va statusni yangilash
    */
-  async getInboundById(id) {
+  async saveLabAnalysis(req, payload, userId) {
+    const { InboundHistory, LabAnalysis } = req.tenantModels;
+    try {
+      const { inboundBatchIds, labResults, distribution, totalPhysicalVolume } = payload;
+
+      // 1. Laboratoriya hujjati
+      const newAnalysis = new LabAnalysis({
+        partyNumber: await generateUniqueLabNumber(req),
+        inboundBatchIds,
+        results: labResults,
+        distribution,
+        totalVolume: totalPhysicalVolume,
+        author: userId,
+        status: 'Accepted'
+      });
+
+      const savedAnalysis = await newAnalysis.save();
+
+      // 2. Kirim partiyalarini yangilash
+      // Bir nechta partiya bitta lab tahlilida birlashishi mumkin
+      await InboundHistory.updateMany(
+        { _id: { $in: inboundBatchIds } },
+        { 
+          $set: { 
+            status: 'Accepted', 
+            labAnalysisId: savedAnalysis._id 
+          } 
+        }
+      );
+
+      return {
+        success: true,
+        message: "Laboratoriya tahlili muvaffaqiyatli saqlandi",
+        analysisId: savedAnalysis._id
+      };
+    } catch (error) {
+      throw new Error(`Lab tahlilida xato: ${error.message}`);
+    }
+  }
+
+  /**
+   * 🔍 ID bo'yicha kirimni topish
+   */
+  async getInboundById(req, id) {
+    const { Inbound } = req.tenantModels;
     const inbound = await Inbound.findById(id)
       .populate('items.productId')
-      .populate('branchId supplierId receivedBy');
+      .populate('branchId counterparty receivedBy labAnalysisId');
       
     if (!inbound) throw new Error("Kirim hujjati topilmadi");
     return inbound;
   }
-
-   async saveLabAnalysis(payload, userId) {
-  try {
-    const { inboundBatchIds, labResults, distribution, totalPhysicalVolume } = payload;
-
-    // 1. Yangi Laboratoriya hujjati yaratish (Laboratory Model)
-    const newAnalysis = new Loboratory({
-      partyNumber : await  generateUniqueLabNumber(),
-      inboundBatchIds,      // Birlashtirilgan partiyalar ID lari
-      results: labResults,  // fat, density, acidity, quality
-      distribution,         // { "Smetana 20%": 150, ... }
-      totalVolume: totalPhysicalVolume,
-      author: userId,       // Tahlilni o'tkazgan xodim
-      status: 'Accepted'
-    });
-
-    const savedAnalysis = await newAnalysis.save();
-
-    // 2. Tanlangan Inbound partiyalarini yangilash
-    // Har bir partiyaga labAnalysis ID sini biriktiramiz va statusini o'zgartiramiz
-    const updateBatches = inboundBatchIds.map(id => {
-      return Inbound.findByIdAndUpdate(id, {
-        $set: {
-          status: 'Accepted', // Kirim yakunlandi
-          labAnalysisId: savedAnalysis._id, // Laboratoriya xulosasiga havola
-          // Partiya ichidagi itemsga ham lab natijalarini nusxalash (ixtiyoriy)
-          // 'items.0.fat': labResults.fat,
-          // 'items.0.density': labResults.density,
-          // 'items.0.acidity': labResults.acidity,
-          // 'items.0.labStatus': 'Accepted'
-        }
-      });
-    });
-
-    await Promise.all(updateBatches);
-
-    return {
-      success: true,
-      message: "Laboratoriya tahlili saqlandi va partiyalar yangilandi",
-      analysisId: savedAnalysis._id
-    };
-  } catch (error) {
-    throw new Error(`Laboratoriya tahlilini saqlashda xato: ${error.message}`);
-  }
-}
 }
 
 module.exports = new InboundService();

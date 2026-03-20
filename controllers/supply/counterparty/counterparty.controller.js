@@ -4,7 +4,7 @@ class CounterpartyController {
   // 📌 Kontragentni saqlash (Yaratish yoki Tahrirlash)
   async Save(req, res, next) {
     try {
-      const data = await CounterpartyService.Save(req.body);
+      const data = await CounterpartyService.Save(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -14,7 +14,7 @@ class CounterpartyController {
   // 📌 Barcha kontragentlar ro'yxati
   async GetAll(req, res, next) {
     try {
-      const data = await CounterpartyService.GetAll(req.body);
+      const data = await CounterpartyService.GetAll(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -24,7 +24,7 @@ class CounterpartyController {
   // 📌 ID bo'yicha o'chirish
   async DeleteById(req, res, next) {
     try {
-      const data = await CounterpartyService.DeleteById(req.body);
+      const data = await CounterpartyService.DeleteById(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -34,7 +34,7 @@ class CounterpartyController {
   // 📌 Bitta kontragent ma'lumotlarini olish
   async GetById(req, res, next) {
     try {
-      const data = await CounterpartyService.GetById(req.body);
+      const data = await CounterpartyService.GetById(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -44,7 +44,7 @@ class CounterpartyController {
   // 📌 Kontragentning sut topshirish (Kirimlar) tarixini olish
   async GetInboundsBySupplierId(req, res, next) {
     try {
-      const data = await CounterpartyService.GetInboundsBySupplierId(req.body);
+      const data = await CounterpartyService.GetInboundsBySupplierId(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -55,7 +55,7 @@ class CounterpartyController {
   async ExportExcelDownload(req, res, next) {
     try {
       // Service orqali buffer va filename ni olamiz
-      const { buffer, filename } = await CounterpartyService.ExportExcelDownload(req.body);
+      const { buffer, filename } = await CounterpartyService.ExportExcelDownload(req,req.body);
 
       const cleanFilename = encodeURIComponent(filename);
 

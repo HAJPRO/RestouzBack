@@ -1,16 +1,13 @@
 const mongoose = require("mongoose");
-const Order = require("../../../models/Sale/orders/order.model");
-const UserModel = require("../../../models/user.model");
-
 const BotDriverService = require("../../../bots/drivers/services/driver.service");
-const {
-  generateUniqueOrderNumber,
-} = require("../../../utils/generateUniqueNumber");
+const { generateUniqueOrderNumber } = require("../../../utils/generateUniqueNumber");
 
 class OrderManagmentService {
-  async Create(data) {
-    const orderNumber = await generateUniqueOrderNumber(); // Unikal orderNumber olish
+  // 📌 Buyurtma yaratish
+  async Create(req, data) {
+    const { Order } = req.tenantModels;
     try {
+      const orderNumber = await generateUniqueOrderNumber();
       const savedOrder = await Order.create({
         ...data,
         orderNumber,
@@ -20,13 +17,15 @@ class OrderManagmentService {
       throw new Error("Buyurtma yaratishda xatolik: " + error.message);
     }
   }
-  async UpdateById(data) {
-    const OrderID = data.orderId;
-    const DriverID = data.fullname;
-    const DeliveryTime = data.deliveryTime;
+
+  // 📌 Haydovchiga yuborish va yangilash
+  async UpdateById(req, data) {
+    const { Order } = req.tenantModels;
+    const { orderId, fullname: DriverID, deliveryTime: DeliveryTime } = data;
+
     try {
-      await Order.findByIdAndUpdate(
-        OrderID,
+      const updatedOrder = await Order.findByIdAndUpdate(
+        orderId,
         {
           status: "Haydovchiga yuborilmoqda",
           driverId: DriverID,
@@ -34,226 +33,149 @@ class OrderManagmentService {
           driverSentToTime: new Date(),
         },
         { new: true }
-      );
-      // Endi populate qilib qayta topamiz
-      const updateData = await Order.findById(OrderID)
-        .populate("driverId", "chatId") // agar boshqa bog‘langan maydonlar bo‘lsa, qo‘shing
-        .populate("customerId") // misol uchun
-        .populate("author", "username fullname position"); // misol uchun
-      await BotDriverService.SentOrder(updateData);
+      )
+      .populate("driverId", "chatId")
+      .populate("customerId")
+      .populate("author", "username fullname position");
+
+      if (!updatedOrder) return { status: 404, msg: "Buyurtma topilmadi" };
+
+      // Multi-tenant bot servisini chaqirish
+      await BotDriverService.SentOrder(updatedOrder);
+
       return { status: 200, msg: "Haydovchiga muvaffaqiyatli yuborildi" };
     } catch (error) {
-      console.error("Buyurtmani olishda xatolik: ", error);
-      return {
-        status: 500,
-        msg: "Buyurtmani olishda xatolik: " + error.message,
-      };
+      return { status: 500, msg: "Yangilashda xatolik: " + error.message };
     }
   }
-  async OrderGetById(data) {
-    const ID = data.id;
 
-    if (!mongoose.Types.ObjectId.isValid(ID)) {
+  // 📌 ID bo'yicha olish
+  async OrderGetById(req, data) {
+    const { Order } = req.tenantModels;
+    if (!mongoose.Types.ObjectId.isValid(data.id)) {
       return { status: 400, msg: "Noto'g'ri ID format." };
     }
 
     try {
-      const order = await Order.findById(ID)
-        .populate("customerId") // customerId bilan bog'langan ma'lumotlar
-        .populate("author", "fullname position username"); // authorId bilan bog'langan ma'lumotlar;
+      const order = await Order.findById(data.id)
+        .populate("customerId")
+        .populate("author", "fullname position username")
+        .lean();
 
-      if (!order) {
-        return { status: 404, msg: "Buyurtma topilmadi." };
-      }
+      if (!order) return { status: 404, msg: "Buyurtma topilmadi." };
 
-      return { status: 200, msg: "Buyurtma malumoti yuborildi", order };
+      return { status: 200, msg: "Buyurtma ma'lumoti yuborildi", order };
     } catch (error) {
-      console.error("Buyurtmani olishda xatolik: ", error);
-      return {
-        status: 500,
-        msg: "Buyurtmani olishda xatolik: " + error.message,
-      };
+      return { status: 500, msg: "Server xatosi: " + error.message };
     }
   }
-  async OrderGetById(data) {
-    const ID = data.id;
 
-    if (!mongoose.Types.ObjectId.isValid(ID)) {
-      return { status: 400, msg: "Noto'g'ri ID format." };
-    }
-
+  // 📌 Jami sonini olish (Performance uchun countDocuments)
+  async getAllLength(req) {
+    const { Order } = req.tenantModels;
     try {
-      const order = await Order.findById(ID)
-        .populate("customerId") // customerId bilan bog'langan ma'lumotlar
-        .populate("author", "fullname position username"); // authorId bilan bog'langan ma'lumotlar;
-
-      if (!order) {
-        return { status: 404, msg: "Buyurtma topilmadi." };
-      }
-
-      return { status: 200, msg: "Buyurtma malumoti yuborildi", order };
+      const all = await Order.countDocuments();
+      return { all };
     } catch (error) {
-      console.error("Buyurtmani olishda xatolik: ", error);
-      return {
-        status: 500,
-        msg: "Buyurtmani olishda xatolik: " + error.message,
-      };
+      return { all: 0 };
     }
   }
 
-  async getAllLength(data) {
-    const all = await Order.find().then((data) => {
-      if (data) {
-        return data.length;
-      } else {
-        return 0;
-      }
-    });
-    return { all };
-  }
-  async GetAll(data) {
+  // 📌 Filtrlash va barcha buyurtmalarni olish
+  async GetAll(req, data) {
+    const { Order } = req.tenantModels;
     try {
-      if (data.filter) {
-        // Agar fullname bo‘sh bo‘lsa, to‘g‘ridan-to‘g‘ri barcha orderlarni qaytaramiz
-        if (data.filter.fullname === "") {
-          const orders = await this.GetAllOrders({
-            status: 1,
-            page: 1,
-            limit: 10,
-          });
-          const all_length = await this.getAllLength(data);
-          return { orders, all_length };
-        }
-
-        // fullname mavjud bo‘lsa, qidiruv amalga oshiriladi
+      // 1. Qidiruv mavjud bo'lsa
+      if (data.filter && data.filter.fullname !== "") {
+        const searchRegex = new RegExp(data.filter.fullname, "i");
+        
         const orders = await Order.aggregate([
           {
             $lookup: {
-              from: "customers",
+              from: "customers", // Bu yerda tenant bazasidagi collection nomi
               localField: "customerId",
               foreignField: "_id",
-              as: "customerId",
+              as: "customerData",
             },
           },
-          { $unwind: "$customerId" },
+          { $unwind: "$customerData" },
           {
             $match: {
               $or: [
-                {
-                  "customerId.fullname": {
-                    $regex: `^${data.filter.fullname}`,
-                    $options: "i",
-                  },
-                },
-                { "customerId.fullname": data.filter.fullname },
-                {
-                  "customerId.phoneNumber": {
-                    $regex: data.filter.fullname,
-                    $options: "i",
-                  },
-                },
-                {
-                  orderNumber: {
-                    $regex: data.filter.fullname,
-                    $options: "i",
-                  },
-                },
+                { "customerData.fullname": searchRegex },
+                { "customerData.phoneNumber": searchRegex },
+                { "orderNumber": searchRegex }
               ],
             },
           },
+          { $sort: { createdAt: -1 } }
         ]);
 
-        const all_length = await this.getAllLength(data);
-
-        if (orders.length > 0) {
-          return { orders, all_length };
-        } else {
-          return {
-            status: 404,
-            msg: "Bunday mijoz topilmadi",
-            orders: [],
-            all_length,
-          };
-        }
+        const { all } = await this.getAllLength(req);
+        return { orders, all_length: all };
       }
 
-      if (data.status === 1) {
-        const all_length = await this.getAllLength(data);
-        const orders = await this.GetAllOrders(data);
-        return { orders, all_length };
-      } else {
-        return { msg: `Server xatosi: ${error.message} `, orders: [] };
-      }
+      // 2. Oddiy listing (status = 1 yoki filter yo'q bo'lsa)
+      const { all } = await this.getAllLength(req);
+      const orders = await this.GetAllOrders(req, data);
+      return { orders, all_length: all };
+
     } catch (error) {
-      return {
-        msg: `Server xatosi: ${error.message} `,
-        orders: [],
-        all_length: {},
-      };
+      return { msg: `Server xatosi: ${error.message}`, orders: [], all_length: 0 };
     }
   }
-  // 📌 **Barcha mijozlar olish**
-  async GetAllOrders(data) {
-    const page = Number(data.page);
-    const limit = Number(data.limit);
+
+  // 📌 Paginatsiya bilan olish
+  async GetAllOrders(req, data) {
+    const { Order } = req.tenantModels;
+    const page = Number(data.page) || 1;
+    const limit = Number(data.limit) || 10;
     const skip = (page - 1) * limit;
+
     try {
-      const orders = await Order.find()
+      return await Order.find()
         .skip(skip)
         .limit(limit)
-        .populate("customerId") // <-- customerId ni ochadi
+        .sort({ createdAt: -1 })
+        .populate("customerId")
         .lean();
-
-      return orders.length ? orders : [];
     } catch (error) {
-      return { msg: `Server xatosi: ${error.message}` };
+      return [];
     }
   }
 
-  // 📌 **Barcha haydovchilar olish**
-  async GetAllDrivers(data) {
+  // 📌 Haydovchilar ro'yxatini olish (Tenant User bazasidan)
+  async GetAllDrivers(req) {
+    const { User } = req.tenantModels;
     try {
-      // Barcha foydalanuvchilarni roles bilan birga olish
-      const users = await UserModel.find().populate("roles").lean();
-
-      // roles ichida name = 'driver' yoki 'haydovchi' bo‘lganlarni filter qilish
-      const drivers = users.filter((user) =>
-        user.roles?.some(
-          (role) =>
-            role.name?.toLowerCase() === "driver" ||
-            role.name?.toLowerCase() === "haydovchi"
-        )
-      );
+      const drivers = await User.find({
+        $or: [
+          { position: { $regex: /haydovchi/i } },
+          { "roles.name": { $regex: /driver|haydovchi/i } }
+        ]
+      }).select("fullname chatId phone position").lean();
 
       return { drivers };
     } catch (error) {
-      console.error("GetAllDrivers xatolik:", error);
-      return { msg: `Server xatosi: ${error.message}` };
-    }
-  }
-  async ExportExcelDownload(data) {
-    try {
-      console.log(data);
-    } catch (error) {
       return { msg: `Server xatosi: ${error.message}` };
     }
   }
 
-  async DeleteById(data) {
+  // 📌 O'chirish (Huquq tekshiruvi bilan)
+  async DeleteById(req, data) {
+    const { Order } = req.tenantModels;
     try {
       const { id, author } = data;
       const order = await Order.findOne({ _id: id, author: author });
-      if (order) {
-        await Order.findByIdAndDelete({ _id: id });
-        return { msg: "Muvaffaqiyatli o'chirildi !", status: 200 };
-      } else {
-        return {
-          msg: "Bu buyurtmani o'chirishga sizda huquq yuq !",
-          status: 500,
-        };
+      
+      if (!order) {
+        return { msg: "Buyurtma topilmadi yoki o'chirish huquqi yo'q!", status: 403 };
       }
+
+      await Order.findByIdAndDelete(id);
+      return { msg: "Muvaffaqiyatli o'chirildi!", status: 200 };
     } catch (error) {
-      return { msg: `Server xatosi: ${error.message}` };
+      return { msg: `Server xatosi: ${error.message}`, status: 500 };
     }
   }
 }

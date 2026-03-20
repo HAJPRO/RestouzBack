@@ -21,4 +21,4 @@ const PermissionSchema = new Schema(
 }
 );
 
-module.exports = model("Permission", PermissionSchema);
+module.exports = PermissionSchema;

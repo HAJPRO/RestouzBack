@@ -1,157 +1,149 @@
-const User = require("../../../models/user.model");
-const Order = require("../../../models/Sale/orders/order.model");
-
+// Statik importlar olib tashlandi
 class EmployeeManagmentService {
-    async Create(data) {
+    // 📌 Xodim yaratish
+    async Create(req, data) {
+        const { User } = req.tenantModels;
         try {
-            const customerExists = await User.exists({
+            const employeeExists = await User.exists({
                 $or: [
                     { passportNumber: data.passportNumber },
                     { artikul: data.artikul },
                 ],
             });
 
-            if (customerExists) {
-                return { msg: "Bunday mijoz bazada mavjud !" };
-            } else {
-                const customer = new User(data);
-                const savedCustomer = await User.save();
-                return { status: "200", msg: "Mijoz muvaffaqiyatli qo'shildi!" };
+            if (employeeExists) {
+                return { msg: "Bunday xodim bazada mavjud!" };
             }
+
+            // create() metodidan foydalanish qisqaroq va xavfsizroq
+            const newEmployee = await User.create(data);
+            return { status: "200", msg: "Xodim muvaffaqiyatli qo'shildi!", data: newEmployee };
         } catch (error) {
-            throw new Error("Error creating customer: " + error.message);
+            throw new Error("Xodim yaratishda xatolik: " + error.message);
         }
     }
 
-    async getAllLength(data) {
-        const all = await User.find().then((data) => {
-            if (data) {
-                return data.length;
-            } else {
-                return 0;
-            }
-        });
-        return { all };
-    }
-    async GetAll(data) {
-
+    // 📌 Umumiy sonini olish (Optimallashtirilgan)
+    async getAllLength(req) {
+        const { User } = req.tenantModels;
         try {
-             if (!data.status) {
-                const employees = await User.find().lean()
-                return { employees }
-            }
-            if (data.status === 0) {
-                const employees = await User.find().lean()
-                return { employees }
-            }
-            if (data.status === 1) {
-                const all_length = await this.getAllLength(data);
-                const employees = await this.GetAllEmloyees(data);
-                return { employees, all_length };
-            }
-            if (data.status === 3) {
-                const all_length = await this.getAllLength(data);
-                const employees = await this.GetAllDrivers(data);
-                return { employees, all_length };
-            }
-            else {
-                return { msg: `Server xatosi: ${error.message} `, customers: [] };
-            }
+            const all = await User.countDocuments();
+            return { all };
         } catch (error) {
-            return { msg: `Server xatosi: ${error.message} `, customers: [], all_length: {} };
+            return { all: 0 };
         }
     }
-    // 📌 **Barcha mijozlar olish**
-    async GetAllEmloyees(data) {
-        const page = Number(data.page);
-        const limit = Number(data.limit)
+
+    // 📌 Xodimlarni status bo'yicha olish
+    async GetAll(req, data) {
+        try {
+            const { status } = data;
+
+            if (!status || status === 0) {
+                const { User } = req.tenantModels;
+                const employees = await User.find().lean();
+                return { employees };
+            }
+            
+            if (status === 1) {
+                const { all } = await this.getAllLength(req);
+                const employees = await this.GetAllEmployees(req, data);
+                return { employees, all_length: all };
+            }
+            
+            if (status === 3) {
+                const { all } = await this.getAllLength(req);
+                const employees = await this.GetAllDrivers(req, data);
+                return { employees, all_length: all };
+            }
+
+            return { msg: "Noto'g'ri status kodi", employees: [] };
+        } catch (error) {
+            return { msg: `Server xatosi: ${error.message}`, employees: [], all_length: 0 };
+        }
+    }
+
+    // 📌 Barcha xodimlarni paginatsiya bilan olish
+    async GetAllEmployees(req, data) {
+        const { User } = req.tenantModels;
+        const page = Number(data.page) || 1;
+        const limit = Number(data.limit) || 10;
         const skip = (page - 1) * limit;
+
         try {
-            const customers = await User.find().populate("roles", "name permissions")
+            return await User.find()
+                .populate("roles", "name permissions")
                 .skip(skip)
                 .limit(limit)
                 .lean();
-
-            return customers.length ? customers : [];
         } catch (error) {
-            return { msg: `Server xatosi: ${error.message}` };
+            throw new Error(`Xodimlarni yuklashda xatolik: ${error.message}`);
         }
     }
-    async GetAllDrivers(data) {
 
-        const page = Number(data.page);
-        const limit = Number(data.limit)
+    // 📌 Faqat haydovchilarni olish
+    async GetAllDrivers(req, data) {
+        const { User } = req.tenantModels;
+        const page = Number(data.page) || 1;
+        const limit = Number(data.limit) || 10;
         const skip = (page - 1) * limit;
+
         try {
-            const drivers = await User.find({ position: "Haydovchi" }).populate("roles", "name permissions")
+            return await User.find({ position: "Haydovchi" })
+                .populate("roles", "name permissions")
                 .skip(skip)
                 .limit(limit)
                 .lean();
-            console.log(drivers);
+        } catch (error) {
+            throw new Error(`Haydovchilarni yuklashda xatolik: ${error.message}`);
+        }
+    }
 
-            return drivers.length ? drivers : [];
+    // 📌 ID bo'yicha o'chirish
+    async DeleteById(req, data) {
+        const { User } = req.tenantModels;
+        try {
+            const deleted = await User.findByIdAndDelete(data.id);
+            if (!deleted) return { msg: "Xodim topilmadi!" };
+            return { msg: "Xodim muvaffaqiyatli o'chirildi!" };
         } catch (error) {
             return { msg: `Server xatosi: ${error.message}` };
         }
     }
 
-    async DeleteById(data) {
-        const id = data.id;
+    // 📌 ID bo'yicha ma'lumot olish
+    async GetById(req, data) {
+        const { User } = req.tenantModels;
         try {
-            const customer = await User.findByIdAndDelete(id);
-            if (!customer) {
-                return { msg: "Bunday mijoz topilmadi!" };
-            }
-            return { msg: "Mijoz muvaffaqiyatli o'chirildi!" };
-        } catch (error) {
-            return { msg: `Server xatosi: ${error.message}` };
-        }
+            const user = await User.findById(data.id).populate("roles", "name");
+            if (!user) return { msg: "Xodim topilmadi!" };
 
-    }
-    async GetById(data) {
-        const id = data.id;
-        try {
-            const user = await User.findById(data.id)
-                .populate({
-                    path: "roles",
-                    select: "name -_id" // faqat name ni oladi, _id ni olmaslik uchun
-                });
-
-            const roleNames = user.roles.map(role => role.name); // name larni arrayga olish
-
+            const roleNames = user.roles ? user.roles.map(role => role.name) : [];
             const customer = {
                 ...user.toObject(),
                 roles: roleNames
             };
 
-            if (!user) {
-                return { msg: "Bunday mijoz topilmadi!" };
-            } else {
-
-                return { msg: "Mijoz muvaffaqiyatli aniqlandi !", customer };
-            }
-
-
+            return { msg: "Xodim aniqlandi!", customer };
         } catch (error) {
             return { msg: `Server xatosi: ${error.message}` };
         }
-
     }
 
-    async GetOrdersByDriverId(data) {
-        const id = data.id;
+    // 📌 Haydovchining buyurtmalarini olish
+    async GetOrdersByDriverId(req, data) {
+        const { Order } = req.tenantModels;
         try {
-            const orders = await Order.find({ driverId: id })
-                .populate('driverId')    // haydovchi haqida ma'lumotni olish
-                .populate('author')     // author (buyurtmani kim yaratgan) haqida ma'lumot
-                .populate('customerId')
+            const orders = await Order.find({ driverId: data.id })
+                .populate('driverId')
+                .populate('author')
+                .populate('customerId');
 
             return { msg: "ok", status: 200, orders };
         } catch (error) {
             return { msg: `Server xatosi: ${error.message}` };
         }
     }
-
 }
 
 module.exports = new EmployeeManagmentService();

@@ -86,4 +86,4 @@ SupplyInboundSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('SupplyInbound', SupplyInboundSchema);
+module.exports =  SupplyInboundSchema;

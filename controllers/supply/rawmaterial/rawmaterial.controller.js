@@ -9,7 +9,7 @@ class RawMaterialController {
         try {
             // Base64 formatida rasm va action/model req.body ichida keladi
             // req.user.id - foydalanuvchi identifikatori (middleware orqali keladi)
-            const result = await RawMaterialService.create(req.body, req.user?.id);
+            const result = await RawMaterialService.create(req,req.body, req.user?.id);
 
             // Service darajasidagi mantiqiy xatoliklarni tekshirish (400, 404)
             if (result.status && result.status !== "200") {
@@ -39,7 +39,7 @@ class RawMaterialController {
     async getAllMaterials(req, res, next) {
         try {
             const filter = req.body.filter || {};
-            const materials = await RawMaterialService.getAll(filter);
+            const materials = await RawMaterialService.getAll(req,filter);
 
             return res.status(200).json({
                 success: true,
@@ -65,7 +65,7 @@ class RawMaterialController {
                 });
             }
 
-            const material = await RawMaterialService.getById(id);
+            const material = await RawMaterialService.getById(req,id);
 
             if (!material) {
                 return res.status(404).json({
@@ -98,7 +98,7 @@ class RawMaterialController {
                 });
             }
 
-            const result = await RawMaterialService.delete(id);
+            const result = await RawMaterialService.delete(req,id);
 
             if (!result) {
                 return res.status(404).json({ 

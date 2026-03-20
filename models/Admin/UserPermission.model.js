@@ -1,5 +1,4 @@
 const { model, Schema } = require("mongoose");
-
 const userPermissionSchema = new Schema(
   {
     user_id: {
@@ -18,4 +17,4 @@ const userPermissionSchema = new Schema(
   { timestamps: true }
 );
 
-module.exports = model("UserPermission", userPermissionSchema);
+module.exports =  userPermissionSchema;

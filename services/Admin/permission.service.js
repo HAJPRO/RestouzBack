@@ -1,10 +1,14 @@
-const PermissionModel = require("../../models/Admin/permission.model");
+// ❌ Statik importni o'chirib tashlang
+// const PermissionModel = require("../../models/Admin/permission.model");
 
 class PermissionService {
-  async CreatePermission(data) {
+  async CreatePermission(req, data) {
+    // ✅ Modellarni dinamik ravishda olamiz
+    const { Permission } = req.tenantModels;
+
     try {
-      const name = data.CreatePermissionname;
-      const isExists = await PermissionModel.findOne({
+      // Bir xil nom yoki qiymatli ruxsat borligini tekshirish
+      const isExists = await Permission.findOne({
         $or: [
           { name: data.name },
           { value: data.value }
@@ -12,22 +16,27 @@ class PermissionService {
       });
 
       if (!isExists) {
-        const Permission = new PermissionModel(data);
-        const permission = await PermissionModel.create(Permission);
+        // ✅ Yangi ruxsatni yaratish
+        const permission = await Permission.create(data);
         return { msg: "Ruxsat muvaffaqiyatli qo‘shildi!", permission };
       } else {
-        return { msg: "Bunday nomdagi ruxsat allaqachon mavjud." };
+        return { msg: "Bunday nomdagi yoki qiymatdagi ruxsat allaqachon mavjud." };
       }
     } catch (err) {
-      return { msg: "Xatolik yuz berdi", error: err };
+      console.error("Permission Create Error:", err.message);
+      return { msg: "Xatolik yuz berdi", error: err.message };
     }
   }
-  async GetAll() {
+
+  async GetAll(req) {
+    const { Permission } = req.tenantModels;
+
     try {
-      const permissions = await PermissionModel.find()
-      return { msg: "Barchasi", permissions }
+      const permissions = await Permission.find().lean();
+      return { msg: "Barcha ruxsatnomalar", permissions };
     } catch (err) {
-      return { msg: "Xatolik yuz berdi", error: err };
+      console.error("Permission GetAll Error:", err.message);
+      return { msg: "Xatolik yuz berdi", error: err.message };
     }
   }
 }

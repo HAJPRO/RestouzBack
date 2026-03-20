@@ -2,7 +2,7 @@ const OrderManagmentService = require("../../../services/sale/orders/order.servi
 class OrderManagmentController {
   async Create(req, res, next) {
     try {
-      const data = await OrderManagmentService.Create({ author: req.user.id, ...req.body });
+      const data = await OrderManagmentService.Create(req,{ author: req.user.id, ...req.body });
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -10,7 +10,7 @@ class OrderManagmentController {
   }
   async OrderGetById(req, res, next) {
     try {
-      const data = await OrderManagmentService.OrderGetById({ author: req.user.id, ...req.body });
+      const data = await OrderManagmentService.OrderGetById(req,{ author: req.user.id, ...req.body });
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -18,7 +18,7 @@ class OrderManagmentController {
   }
   async UpdateById(req, res, next) {
     try {
-      const data = await OrderManagmentService.UpdateById({ author: req.user.id, ...req.body });
+      const data = await OrderManagmentService.UpdateById(req,{ author: req.user.id, ...req.body });
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -26,7 +26,7 @@ class OrderManagmentController {
   }
   async GetAll(req, res, next) {
     try {
-      const data = await OrderManagmentService.GetAll(req.body);
+      const data = await OrderManagmentService.GetAll(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -34,7 +34,7 @@ class OrderManagmentController {
   }
   async GetAllDrivers(req, res, next) {
     try {
-      const data = await OrderManagmentService.GetAllDrivers(req.body);
+      const data = await OrderManagmentService.GetAllDrivers(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -42,7 +42,7 @@ class OrderManagmentController {
   }
   async DeleteById(req, res, next) {
     try {
-      const data = await OrderManagmentService.DeleteById({...req.body, author : req.user.id});
+      const data = await OrderManagmentService.DeleteById(req,{...req.body, author : req.user.id});
       res.status(200).json(data);
     } catch (error) {
       next(error);
@@ -51,7 +51,7 @@ class OrderManagmentController {
   }
   async ExportExcelDownload(req, res, next) {
     try {
-      const data = await OrderManagmentService.ExportExcelDownload(req.body);
+      const data = await OrderManagmentService.ExportExcelDownload(req,req.body);
       res.status(200).json(data);
     } catch (error) {
       next(error);
