@@ -31,9 +31,10 @@ const allowedOrigins = [
     "https://restouz-core.company-erp.uz",
     "http://localhost:5173",
     "http://localhost:5000",
-    "http://localhost",       // Android Capacitor/Cordova
+    "http://localhost",       // Android/Web HTTP
+    "https://localhost",      // 👈 SHUNI QO'SHING (iOS yoki ba'zi yangi Android WebView uchun)
     "capacitor://localhost",  // iOS Capacitor
-    "http://localhost:8100",  // Ionic dev
+    "http://localhost:8100"
 ];
 
 app.use(cors({
