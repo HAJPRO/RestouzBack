@@ -1,7 +1,7 @@
-const UserDto = require("../dtos/user.dto");
+const UserDto = require("../../dtos/user.dto");
 const bcrypt = require("bcryptjs");
-const tokenService = require("../services/token.service");
-const BaseError = require("../errors/base.error");
+const tokenService = require("./token.service");
+const BaseError = require("../../errors/base.error");
 
 class AuthService {
   /**
@@ -10,7 +10,7 @@ class AuthService {
   async register(req, data) {
     const { User, Token } = req.tenantModels;
     const { username, password, companyCode } = data;
-console.log(data)
+    console.log(data)
     // 1. Shu tenant ichida username band emasligini tekshirish
     const existUser = await User.findOne({ username });
     if (existUser) {
@@ -38,28 +38,65 @@ console.log(data)
   /**
    * 🔑 Login qilish
    */
+  /**
+ * Foydalanuvchini tizimga kiritish (Multi-tenant support)
+ * @param {Object} req - Request object
+ * @param {String} username - Foydalanuvchi nomi
+ * @param {String} password - Maxfiy parol
+ */
   async login(req, username, password) {
     const { User, Token } = req.tenantModels;
-    console.log(User);
-    
     const { companyCode } = req.body;
 
+    // 1. Model mavjudligini tekshirish (Early Exit)
     if (!User || !Token) {
-      throw BaseError.BadRequest("Tenant modellari yuklanmadi");
+      throw BaseError.InternalServerError("Ma'lumotlar bazasi bilan ulanishda xatolik (Tenant models missing)");
     }
 
-    const user = await User.findOne({ username }).populate('roles');
-    if (!user) throw BaseError.BadRequest("Foydalanuvchi topilmadi");
+    // 2. Foydalanuvchini izlash (Faqat kerakli maydonlarni olish orqali performance'ni oshiramiz)
+    const user = await User.findOne({ username })
+      .populate({
+        path: 'roles',
+        select: 'name permissions' // Faqat kerakli maydonlarni populate qilish
+      })
+      .select('+password'); // Agar modelda password: { select: false } bo'lsa
 
-    const isPassword = await bcrypt.compare(password, user.password);
-    if (!isPassword) throw BaseError.BadRequest("Parol noto'g'ri");
+    if (!user) {
+      throw BaseError.BadRequest("Foydalanuvchi nomi yoki parol noto'g'ri");
+      // Xavfsizlik uchun: "Foydalanuvchi topilmadi" demaslik kerak
+    }
 
+    // 3. Parolni tekshirish
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw BaseError.BadRequest("Foydalanuvchi nomi yoki parol noto'g'ri");
+    }
+
+    // 4. DTO va Token yaratish
     const userDto = new UserDto(user);
-    const tokens = tokenService.generateToken({ ...userDto, companyCode });
 
-    await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
+    // Token ichiga ortiqcha ma'lumot qo'shmaslik kerak (Payload hajmi uchun)
+    const tokens = tokenService.generateToken({
+      id: userDto.id,
+      roles: userDto.roles,
+      companyCode
+    });
 
-    return { user: userDto, ...tokens, companyCode };
+    // 5. Refresh tokenni bazaga saqlash
+    try {
+      await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
+    } catch (error) {
+      console.error(`[TokenSaveError]: User ID ${userDto.id}`, error);
+      throw BaseError.InternalServerError("Tizimga kirishda texnik xatolik yuz berdi");
+    }
+
+    // 6. Natijani qaytarish (Muvaffaqiyatli login)
+    return {
+      user: userDto,
+      ...tokens,
+      companyCode,
+      loginAt: new Date() // Audit uchun foydali
+    };
   }
 
   /**

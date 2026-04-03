@@ -73,7 +73,7 @@ tenantRouter.use("/admin/role", require("./routes/admin/role.route.js"));
 tenantRouter.use("/admin/user", require("./routes/admin/users.route.js"));
 
 // Umumiy yo'nalishlar
-tenantRouter.use("/auth", require("./routes/auth.route.js"));
+tenantRouter.use("/auth", require("./routes/auth/auth.route.js"));
 tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
 
 app.use("/api/v1", tenantRouter);

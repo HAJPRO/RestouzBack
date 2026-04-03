@@ -1,5 +1,5 @@
 const BaseError = require("../errors/base.error");
-const tokenService = require("../services/token.service.js");
+const tokenService = require("../services/Auth/token.service");
 
 module.exports = function (req, res, next) {
   try {
