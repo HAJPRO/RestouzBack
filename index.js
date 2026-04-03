@@ -81,7 +81,7 @@ app.use("/api/v1", tenantRouter);
 // Xatoliklarni ushlash (Routerlardan keyin bo'lishi shart)
 app.use(errorMiddleware);
 
-// ------------------ SOCKET.IO LOGIKASI ------------------
+// ------------------ SOCKET.IO LOGIKASI ----------------
 io.on("connection", (socket) => {
     console.log("⚡ Yangi socket ulanishi:", socket.id);
 });
