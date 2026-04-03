@@ -67,10 +67,10 @@ app.use(express.static(path.join(__dirname, "public")));
 const tenantRouter = express.Router();
 tenantRouter.use(tenantMiddleware);
 
-// Admin yo'nalishlari
-tenantRouter.use("/admin/permission", require("./routes/admin/permission.route.js"));
-tenantRouter.use("/admin/role", require("./routes/admin/role.route.js"));
-tenantRouter.use("/admin/user", require("./routes/admin/users.route.js"));
+// Settings yo'nalishlari
+// tenantRouter.use("/settings/permission", require("./routes/settings/permission.route.js"));
+// tenantRouter.use("/settings/role", require("./routes/settings/role.route.js"));
+tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
 
 // Umumiy yo'nalishlar
 tenantRouter.use("/auth", require("./routes/auth/auth.route.js"));
