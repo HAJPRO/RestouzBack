@@ -68,8 +68,8 @@ const tenantRouter = express.Router();
 tenantRouter.use(tenantMiddleware);
 
 // Settings yo'nalishlari
-// tenantRouter.use("/settings/permission", require("./routes/settings/permission.route.js"));
-// tenantRouter.use("/settings/role", require("./routes/settings/role.route.js"));
+tenantRouter.use("/settings/permission", require("./routes/settings/permission/permission.route.js"));
+tenantRouter.use("/settings/role", require("./routes/settings/role/role.route.js"));
 tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
 
 // Umumiy yo'nalishlar
