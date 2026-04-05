@@ -7,6 +7,7 @@ const router = express.Router();
 
 
 router.post("/create", tenantMiddleware, TabelController.Create);
+router.post("/all", tenantMiddleware, TabelController.GetAll);
 
 
 module.exports = router;

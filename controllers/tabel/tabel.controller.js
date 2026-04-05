@@ -19,6 +19,23 @@ class TabelController {
             next(error);
         }
     }
+     async GetAll(req, res, next) {
+        try {
+            // Service-dan qaytgan ma'lumotni olamiz
+            const data = await TabelService.GetAll(req);
+
+            // Frontend-ga javob qaytarish
+            return res.status(201).json({
+                success: true,
+                message: "BARCHA TABELLAR OLINDI",
+                data // Yangi yaratilgan obyekt
+            });
+
+        } catch (error) {
+            // Xatolikni errorMiddleware-ga uzatish
+            next(error);
+        }
+    }
 
 }
 
