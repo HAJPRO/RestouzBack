@@ -7,33 +7,53 @@ const data = await Tabel.create(req.body)
         return { msg: "YANGI TABEL QO'SHMOQCHIMISAN " }
 
     }
-      async GetAll(req) {
-        const { Tabel } = req.tenantModels;
-const data = await Tabel.find()
-        return { msg: "BARCHA TABELLAR", data }
-    }
+     async GetAll(req) {
+    const { Tabel } = req.tenantModels;
+
+    // Tabel modelidagi 'bookings' maydonini populate qilamiz
+    const data = await Tabel.find()
+        .populate({
+            path: 'bookings',
+            // Agar faqat ma'lum vaqt oralig'idagi yoki bekor qilinmagan 
+            // bronlar kerak bo'lsa, match qismini qo'shish mumkin:
+            // match: { status: { $ne: 'cancelled' } } 
+        })
+        .lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
+
+    return { 
+        success: true,
+        msg: "BARCHA TABELLAR VA BRONLAR", 
+        data 
+    };
+}
 
     ///Booking service
-    async CreateBooking(req) {
-    const { Booking, Tabel } = req.tenantModels; // Tabel modelini ham olamiz
+  async CreateBooking(req) {
+    const { Booking, Tabel } = req.tenantModels;
     const { _id, ...bookingData } = req.body; 
 
-    // 1. Booking obyektini yaratish
-    // Fronteddan kelayotgan _id ni table_id ga o'giramiz
+    
     const newBooking = await Booking.create({
         ...bookingData,
         table_id: _id 
     });
 
-    // 2. Stol holatini yangilash ("2" -> Bron qilingan)
-    // Stolni band (1) emas, aynan bron (2) holatiga o'tkazamiz
-    await Tabel.findByIdAndUpdate(_id, { 
-        status: 2 
-    });
+   
+    const updatedTable = await Tabel.findByIdAndUpdate(
+        _id, 
+        { 
+            $push: { bookings: newBooking._id } // Bronlar ro'yxatiga ID qo'shamiz
+        },
+        { new: true } // Yangilangan stol ma'lumotini qaytarish uchun
+    );
+
+    if (!updatedTable) {
+        throw new Error("Stol topilmadi");
+    }
 
     return { 
         success: true,
-        msg: "Stol muvaffaqiyatli band qilindi", 
+        msg: "Stol muvaffaqiyatli bron qilindi", 
         data: newBooking 
     };
 }

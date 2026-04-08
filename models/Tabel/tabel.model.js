@@ -39,7 +39,11 @@ const TabelSchema = new Schema(
     total : {
         type: String,
         default: "0"
-    }
+    },
+    bookings: [{
+      type: Schema.Types.ObjectId,
+      ref: "Booking" 
+    }] 
 
 
 
