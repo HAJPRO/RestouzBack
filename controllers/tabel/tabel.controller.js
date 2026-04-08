@@ -37,6 +37,35 @@ class TabelController {
         }
     }
 
+    //Booking controller
+     async CreateBooking(req, res, next) {
+        try {
+            // Service-dan qaytgan ma'lumotni olamiz
+            const data = await TabelService.CreateBooking(req);
+ // Frontend-ga javob qaytarish
+            return res.status(201).json({
+                success: true,
+                message: "Tabel muvaffaqiyatli bron qilindi",
+            });
+        } catch (error) {
+            // Xatolikni errorMiddleware-ga uzatish
+            next(error);
+        }
+    }
+    async GetTableBookings(req, res, next) {
+        try {
+            const data = await TabelService.GetTableBookings(req);
+            return res.status(200).json({
+                success: true,
+                message: "Stolning barcha bronlari olindi",
+                data
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+
 }
 
 module.exports = new TabelController();

@@ -16,12 +16,18 @@ const TabelSchema = new Schema(
       required: true,
 
     },
-     status: {
-      type: String,
-      required: true,
-        enum: ["0", "1", "2","3","-1"],
-        default: "0" // Masalan: 'available', 'occupied', 'reserved'
-    },
+    status: {
+  type: String,
+  required: true,
+  enum: ["0", "1", "2", "3", "-1"],
+  default: "0",
+  // Izohlar:
+  // "0"  -> Bo'sh (available)
+  // "1"  -> Band (occupied)
+  // "2"  -> Bron (reserved)
+  // "3"  -> hisob kutmoqda (waiting for payment)
+  // "-1" -> ta'mirda (under repair)
+},
     
     description: {
       type: String,
