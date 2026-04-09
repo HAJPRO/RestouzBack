@@ -10,7 +10,7 @@ class TabelController {
             // Frontend-ga javob qaytarish
             return res.status(201).json({
                 success: true,
-                message: "Tabel muvaffaqiyatli yaratildi",
+                message: "Muvaffaqiyatli yaratildi",
                 data: data // Yangi yaratilgan obyekt
             });
 
@@ -36,6 +36,19 @@ class TabelController {
             next(error);
         }
     }
+        async GetById(req, res, next) {
+            try {
+                const data = await TabelService.GetById(req);
+                return res.status(200).json({
+                    success: true,
+                    message: "Tabel topildi",
+                    data
+                });
+            } catch (error) {
+                next(error);
+            }
+        }
+
 
     //Booking controller
      async CreateBooking(req, res, next) {

@@ -29,7 +29,7 @@ const TabelSchema = new Schema(
   // "-1" -> ta'mirda (under repair)
 },
     
-    description: {
+    note: {
       type: String,
     },
     timer : {

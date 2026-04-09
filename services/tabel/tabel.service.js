@@ -3,10 +3,22 @@ const BaseError = require("../../errors/base.error");
 class TabelService {
     async Create(req) {
         const { Tabel } = req.tenantModels;
-const data = await Tabel.create(req.body)
+       const  {action} = req.body;
+       if(action === 'create'){
+      const data = await Tabel.create(req.body)
         return { msg: "YANGI TABEL QO'SHMOQCHIMISAN " }
-
-    }
+       } else if(action === 'edit'){
+        const { _id, ...updateData } = req.body;
+        const updatedTabel = await Tabel.findByIdAndUpdate(
+            _id,
+            updateData,
+            { new: true }
+        );
+        if (!updatedTabel) {
+            throw new BaseError("Tabel topilmadi", 404);
+        }
+    }    return { msg: "TABEL MUVAFFAQIYATLI YARATILDI" }
+}
      async GetAll(req) {
     const { Tabel } = req.tenantModels;
 
@@ -23,6 +35,17 @@ const data = await Tabel.create(req.body)
     return { 
         success: true,
         msg: "BARCHA TABELLAR VA BRONLAR", 
+        data 
+    };
+}
+async GetById(req) {
+    const { Tabel } = req.tenantModels;
+    const data = await Tabel.findById(req.params.id)
+        .populate('bookings') // 'bookings' maydonini populate qilamiz
+        .lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
+    return { 
+        success: true,
+        msg: "TABEL TOPILDI", 
         data 
     };
 }

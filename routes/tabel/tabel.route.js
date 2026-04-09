@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.post("/create", tenantMiddleware, TabelController.Create);
 router.post("/all", tenantMiddleware, TabelController.GetAll);
+router.get("/get/:id", tenantMiddleware, TabelController.GetById);
 ///Booking route
 router.post("/booking/create/:id", tenantMiddleware, TabelController.CreateBooking);
 router.get("/booking/get/:id", tenantMiddleware, TabelController.GetTableBookings);
