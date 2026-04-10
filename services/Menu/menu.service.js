@@ -14,7 +14,7 @@ class MenuService {
 
     if (action === 'create') {
         if (!image) throw new BaseError("Rasm majburiy", 400);
-        const data = await Menu.create(req.body);
+        const data = await Menu.create(req.body);   
         return { msg: "Muvaffaqiyatli yaratildi", data };
 
     } else if (action === 'edit') {
