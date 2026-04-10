@@ -4,6 +4,7 @@ const RoleSchema = require("../models/Admin/role.model.js");
 const PermissionSchema = require("../models/Admin/permission.model.js");
 const TokenSchema = require("../models/token.model.js");
 const TabelSchema = require("../models/Tabel/tabel.model.js");
+const MenuSchema = require("../models/Menu/menu.model.js");
 const BookingSchema = require("../models/Tabel/booking.model.js");
 
 
@@ -18,6 +19,7 @@ const initModels = (db) => {
         Permission: getModel('Permission', PermissionSchema),
         Token: getModel('Token', TokenSchema),
         Tabel: getModel('Tabel', TabelSchema),
+        Menu: getModel('Menu', MenuSchema),
         Booking: getModel('Booking', BookingSchema),
 
        

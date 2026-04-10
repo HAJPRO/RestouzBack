@@ -11,7 +11,9 @@ const tenantMiddleware = require("./middlewares/db/tenant.middleware.js");
 
 const app = express();
 const server = http.createServer(app);
-
+// ------------------ MIDDLEWARES ------------------
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // ------------------ SOCKET.IO SOZLAMALARI ------------------
 const io = new Server(server, {
     cors: {
@@ -22,9 +24,7 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-// ------------------ MIDDLEWARES ------------------
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
 
 // CORS sozlamalari - Mobil ilovalar uchun optimallashtirilgan
 const allowedOrigins = [
@@ -75,6 +75,7 @@ tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
 // Umumiy yo'nalishlar
 tenantRouter.use("/auth", require("./routes/auth/auth.route.js"));
 tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
+tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
 
 app.use("/api/v1", tenantRouter);
 
