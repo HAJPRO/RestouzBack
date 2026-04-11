@@ -18,4 +18,7 @@ router.post(
 router.post("/all", tenantMiddleware, MenuController.GetAll);
 router.get("/get/:id", tenantMiddleware, MenuController.GetById);
 
+router.post("/category/create", tenantMiddleware, MenuController.CreateCategory);
+router.post("/category/all", tenantMiddleware, MenuController.GetAllCategories);
+
 module.exports = router;

@@ -49,6 +49,32 @@ class MenuController {
             }
         }
 
+        async CreateCategory(req, res, next) {
+            try {
+                const data = await MenuService.CreateCategory(req);
+                return res.status(201).json({
+                    success: true,
+                    message: "Kategoriya yaratildi",
+                    data
+                });
+            } catch (error) {
+                next(error);
+            }
+        }
+
+        async GetAllCategories(req, res, next) {
+            try {
+                const data = await MenuService.GetAllCategories(req);
+                return res.status(200).json({
+                    success: true,
+                    message: "Barcha kategoriyalar olindi",
+                    data
+                });
+            } catch (error) {
+                next(error);
+            }
+        }
+
 
    
 

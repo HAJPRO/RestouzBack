@@ -49,6 +49,45 @@ async GetById(req) {
     };
 }
 
+////Kategoriya 
+async CreateCategory(req) { // 1. async qo'shildi
+    const { Category } = req.tenantModels;
+    const { action, ...CategoryModel } = req.body;
+
+    if (!CategoryModel.name) {
+        throw new BaseError("Kategoriya nomi kiritilishi kerak", 400);
+    }
+
+    if (action === 'create') {
+        // 2. await qo'shildi
+        const data = await Category.create(CategoryModel); 
+        return { msg: "Kategoriya yaratildi", data };
+    } 
+    
+    if (action === 'edit') {
+        if (!CategoryModel._id) {
+            throw new BaseError("Kategoriya ID kiritilishi kerak", 400);
+        }
+        // 3. await qo'shildi
+        const updated = await Category.findByIdAndUpdate(
+            CategoryModel._id, 
+            CategoryModel, 
+            { new: true }
+        );
+        return { msg: "Kategoriya yangilandi", data: updated };
+    }
+
+    throw new BaseError("Noto'g'ri amal (action)", 400);
+}
+ async GetAllCategories(req) {
+    const { Category } = req.tenantModels;
+
+    // Barcha kategoriyalarni bazadan olamiz
+    const categories = await Category.find().sort({ order: 1 }).lean(); 
+    // MUHIM: Shunchaki massiv emas, aniq struktura qaytaramiz
+    return categories
+}
+
   
 }
 module.exports = new MenuService();    

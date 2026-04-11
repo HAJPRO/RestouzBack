@@ -6,6 +6,8 @@ const TokenSchema = require("../models/token.model.js");
 const TabelSchema = require("../models/Tabel/tabel.model.js");
 const MenuSchema = require("../models/Menu/menu.model.js");
 const BookingSchema = require("../models/Tabel/booking.model.js");
+const CategorySchema = require("../models/Menu/category.model.js");
+
 
 
 const initModels = (db) => {
@@ -21,6 +23,7 @@ const initModels = (db) => {
         Tabel: getModel('Tabel', TabelSchema),
         Menu: getModel('Menu', MenuSchema),
         Booking: getModel('Booking', BookingSchema),
+        Category: getModel('Category', CategorySchema),
 
        
     };
