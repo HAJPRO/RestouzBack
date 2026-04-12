@@ -76,6 +76,7 @@ tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
 tenantRouter.use("/auth", require("./routes/auth/auth.route.js"));
 tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
 tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
+tenantRouter.use("/order", require("./routes/order/order.route.js"));
 
 app.use("/api/v1", tenantRouter);
 

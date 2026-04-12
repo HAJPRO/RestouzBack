@@ -88,6 +88,12 @@ async CreateCategory(req) { // 1. async qo'shildi
     return categories
 }
 
-  
+  ///Cart
+  async CreateOrder(req) {
+        const { Cart } = req.tenantModels;
+        const { action, ...orderData } = req.body;
+        const data = await Cart.create(orderData);
+        return data;
+  }
 }
 module.exports = new MenuService();    

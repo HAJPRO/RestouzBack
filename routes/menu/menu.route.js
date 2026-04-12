@@ -21,4 +21,9 @@ router.get("/get/:id", tenantMiddleware, MenuController.GetById);
 router.post("/category/create", tenantMiddleware, MenuController.CreateCategory);
 router.post("/category/all", tenantMiddleware, MenuController.GetAllCategories);
 
+// Cart uchun endpointlar
+router.post("/order/create", tenantMiddleware, MenuController.CreateOrder);
+// router.get("/order/get/:id", tenantMiddleware, MenuController.GetOrderById);
+// router.get("/order/all", tenantMiddleware, MenuController.GetAllOrders);
+
 module.exports = router;
