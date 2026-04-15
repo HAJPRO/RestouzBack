@@ -90,9 +90,11 @@ async CreateCategory(req) { // 1. async qo'shildi
 
   ///Cart
   async CreateOrder(req) {
-        const { Cart } = req.tenantModels;
+        const { Cart,Tabel } = req.tenantModels;
         const { action, ...orderData } = req.body;
         const data = await Cart.create(orderData);
+
+        await Tabel.findByIdAndUpdate(data.tableId,{status:1,cartId:data._id},{new:true})
         return data;
   }
 }

@@ -43,9 +43,12 @@ const TabelSchema = new Schema(
     bookings: [{
       type: Schema.Types.ObjectId,
       ref: "Booking" 
-    }] 
+    }] ,
 
-
+cartId : {
+  type: Schema.Types.ObjectId,
+      ref: "Cart" 
+}
 
 
 

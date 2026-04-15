@@ -24,12 +24,19 @@ class TabelService {
 
     // Tabel modelidagi 'bookings' maydonini populate qilamiz
     const data = await Tabel.find()
-        .populate({
-            path: 'bookings',
-            // Agar faqat ma'lum vaqt oralig'idagi yoki bekor qilinmagan 
-            // bronlar kerak bo'lsa, match qismini qo'shish mumkin:
-            // match: { status: { $ne: 'cancelled' } } 
-        })
+  .populate([
+    { 
+      path: 'bookings' 
+    },
+    { 
+      path: 'cartId',
+      populate: {
+        path: 'items.foodId', // Savat ichidagi items massividagi foodId-ni ochish
+        select: 'image' // Faqat kerakli maydonlarni (shu jumladan image) olish
+      }
+    }
+  ])
+  
         .lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
 
     return { 
