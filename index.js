@@ -94,30 +94,51 @@ const joriyMuhit = (process.env.NODE_ENV || "development").trim();
 
 const START = async () => {
     try {
+        // Muhitni aniqlash va bo'sh joylardan tozalash
         const env = (process.env.NODE_ENV || 'development').trim().toLowerCase();
         const isProd = env === 'production';
 
-        // --- MUHIM JOYI: Muhitga qarab bazani tanlash ---
+        // .env dan qiymatlarni olish
         const baseUrl = isProd ? process.env.SERVER_DB_BASE : process.env.ATLAS_DB_BASE;
         const options = isProd ? process.env.SERVER_DB_OPTS : process.env.ATLAS_DB_OPTS;
 
+        // Xatolikni oldini olish uchun tekshiruv
         if (!baseUrl) {
-            throw new Error(`❌ .env faylida ${isProd ? 'SERVER_DB_BASE' : 'ATLAS_DB_BASE'} topilmadi!`);
+            console.error("❌ Xatolik: .env faylida ulanish manzili ko'rsatilmagan!");
+            console.log("Qidirilgan o'zgaruvchi:", isProd ? 'SERVER_DB_BASE' : 'ATLAS_DB_BASE');
+            process.exit(1);
         }
 
-        // Agar markaziy bazaga ulanmoqchi bo'lsangiz (masalan, admin bazasi)
+        // Markaziy baza nomi
         const centralDB = isProd ? "admin" : "test"; 
-        const fullUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${centralDB}${options}`;
+        
+        // URL yaratishda xavfsizlik (baseUrl undefined bo'lsa endsWith xato bermasligi uchun)
+        const cleanBaseUrl = baseUrl.toString().trim();
+        const formattedUrl = cleanBaseUrl.endsWith('/') ? cleanBaseUrl : `${cleanBaseUrl}/`;
+        
+        const fullUrl = `${formattedUrl}${centralDB}${options || ""}`;
 
-        await mongoose.connect(fullUrl);
-        console.log(`✅ MongoDB Markaziy ulanish: [${isProd ? 'SERVER' : 'ATLAS'}]`);
+        // MongoDB ga ulanish
+        await mongoose.connect(fullUrl, {
+            serverSelectionTimeoutMS: 5000, // 5 soniyada ulanmasa to'xtatadi
+        });
+
+        console.log(`✅ MongoDB Markaziy ulanish muvaffaqiyatli: [${isProd ? 'SERVER' : 'ATLAS'}]`);
 
         server.listen(PORT, '0.0.0.0', () => {
+            console.log(`\n--- RESTO.UZ TIZIM HOLATI ---`);
             console.log(`🌍 MUHIT: ${env.toUpperCase()}`);
             console.log(`🚀 PORT: ${PORT}`);
+            console.log(`🔗 DB: ${centralDB}`);
+            console.log(`------------------------------\n`);
         });
+
     } catch (err) {
         console.error("❌ START xatosi:", err.message);
+        // Agar productionda bo'lsangiz, error stackni ham ko'rish foydali
+        if (process.env.NODE_ENV !== 'production') {
+            console.error(err.stack);
+        }
         process.exit(1);
     }
 };
