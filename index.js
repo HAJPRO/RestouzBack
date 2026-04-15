@@ -97,17 +97,27 @@ const START = async () => {
         const env = (process.env.NODE_ENV || 'development').trim().toLowerCase();
         const isProd = env === 'production';
 
-        // Faqat serverni ishga tushiramiz, ulanishlar esa dinamik bo'ladi
-        server.listen(PORT, '0.0.0.0', () => {
-            console.log(`\n--- RESTO.UZ TIZIM HOLATI ---`);
-            console.log(`🌍 MUHIT: ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-            console.log(`🚀 PORT: ${PORT}`);
-            console.log(`🔗 DB REJIM: Dinamik Multi-tenant`);
-            console.log(`------------------------------\n`);
-        });
+        // --- MUHIM JOYI: Muhitga qarab bazani tanlash ---
+        const baseUrl = isProd ? process.env.SERVER_DB_BASE : process.env.ATLAS_DB_BASE;
+        const options = isProd ? process.env.SERVER_DB_OPTS : process.env.ATLAS_DB_OPTS;
 
+        if (!baseUrl) {
+            throw new Error(`❌ .env faylida ${isProd ? 'SERVER_DB_BASE' : 'ATLAS_DB_BASE'} topilmadi!`);
+        }
+
+        // Agar markaziy bazaga ulanmoqchi bo'lsangiz (masalan, admin bazasi)
+        const centralDB = isProd ? "admin" : "test"; 
+        const fullUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}${centralDB}${options}`;
+
+        await mongoose.connect(fullUrl);
+        console.log(`✅ MongoDB Markaziy ulanish: [${isProd ? 'SERVER' : 'ATLAS'}]`);
+
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`🌍 MUHIT: ${env.toUpperCase()}`);
+            console.log(`🚀 PORT: ${PORT}`);
+        });
     } catch (err) {
-        console.error(`❌ Serverni ishga tushirishda xatolik: ${err.message}`);
+        console.error("❌ START xatosi:", err.message);
         process.exit(1);
     }
 };
