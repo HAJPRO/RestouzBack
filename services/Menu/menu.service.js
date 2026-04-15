@@ -97,5 +97,24 @@ async CreateCategory(req) { // 1. async qo'shildi
         await Tabel.findByIdAndUpdate(data.tableId,{status:1,cartId:data._id},{new:true})
         return data;
   }
+   async UpdateOrder(req) {
+    const { Cart } = req.tenantModels;
+    
+    const { id,orderData } = req.body; 
+console.log(req.body);
+
+    // 'triue' so'zi 'true' deb yozilishi kerak
+    const data = await Cart.findByIdAndUpdate(
+        id, 
+        {edit:true,...orderData}, 
+        { new: true, runValidators: true } // runValidators: yangilashda ham model qoidalarini tekshiradi
+    );
+
+    if (!data) {
+        throw new Error("Buyurtma topilmadi"); // Agar ID xato bo'lsa
+    }   
+
+    return data;
+}
 }
 module.exports = new MenuService();    

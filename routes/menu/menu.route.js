@@ -23,6 +23,7 @@ router.post("/category/all", tenantMiddleware, MenuController.GetAllCategories);
 
 // Cart uchun endpointlar
 router.post("/order/create", tenantMiddleware, MenuController.CreateOrder);
+router.post("/order/update", tenantMiddleware, MenuController.UpdateOrder);
 // router.get("/order/get/:id", tenantMiddleware, MenuController.GetOrderById);
 // router.get("/order/all", tenantMiddleware, MenuController.GetAllOrders);
 

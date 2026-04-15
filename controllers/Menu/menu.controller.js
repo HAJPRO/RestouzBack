@@ -86,6 +86,19 @@ class MenuController {
       next(error);
     }
   }
+  async UpdateOrder(req, res, next) {
+    try {
+      const data = await MenuService.UpdateOrder(req);
+      // Frontend-ga javob qaytarish
+      return res.status(201).json({
+        success: true,
+        message: "Muvaffaqiyatli yangilandi",
+        data, // Yangi yaratilgan obyekt
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new MenuController();
