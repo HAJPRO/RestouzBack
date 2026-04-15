@@ -94,18 +94,18 @@ const joriyMuhit = (process.env.NODE_ENV || "development").trim();
 
 const START = async () => {
     try {
-        // MongoDB ulanishi
-        await mongoose.connect(process.env.DB_URL);
-        console.log("✅ MongoDB muvaffaqiyatli ulandi");
+        const env = (process.env.NODE_ENV || 'development').trim().toLowerCase();
+        const isProd = env === 'production';
 
-        // Serverni barcha interfeyslarda (0.0.0.0) ishga tushirish
+        // Faqat serverni ishga tushiramiz, ulanishlar esa dinamik bo'ladi
         server.listen(PORT, '0.0.0.0', () => {
-            console.log(`\n--- TIZIM HOLATI ---`);
-            console.log(`🌍 Muhit: ${joriyMuhit.toUpperCase()}`);
-            console.log(`🚀 Port: ${PORT}`);
-            console.log(`🔗 URL: https://restouz-core.company-erp.uz`);
-            console.log(`--------------------\n`);
+            console.log(`\n--- RESTO.UZ TIZIM HOLATI ---`);
+            console.log(`🌍 MUHIT: ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+            console.log(`🚀 PORT: ${PORT}`);
+            console.log(`🔗 DB REJIM: Dinamik Multi-tenant`);
+            console.log(`------------------------------\n`);
         });
+
     } catch (err) {
         console.error(`❌ Serverni ishga tushirishda xatolik: ${err.message}`);
         process.exit(1);

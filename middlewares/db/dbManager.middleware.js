@@ -2,22 +2,33 @@ const mongoose = require('mongoose');
 const tenantConnections = {};
 
 const getTenantDB = async (dbName) => {
-    const finalDbName = (typeof dbName === 'string' && dbName.trim() !== '') ? dbName.trim() : "safymilk";
+    // Agar tenantId kelmasa, default baza
+    const finalDbName = (dbName && dbName.trim() !== '') ? dbName.trim() : "safymilk";
 
-    if (tenantConnections[finalDbName]) {
+    // 1. Keshni tekshirish
+    if (tenantConnections[finalDbName] && tenantConnections[finalDbName].readyState === 1) {
         return tenantConnections[finalDbName];
     }
 
-    const baseUrl = process.env.DB_URL_BASE || "mongodb://127.0.0.1:27017/";
-    const fullUrl = baseUrl.endsWith('/') ? `${baseUrl}${finalDbName}` : `${baseUrl}/${finalDbName}`;
+    const env = (process.env.NODE_ENV || 'development').trim().toLowerCase();
+    const isProd = env === 'production';
+    
+    // Muhitga qarab bazani tanlash
+    const baseUrl = isProd ? process.env.SERVER_DB_BASE : process.env.ATLAS_DB_BASE;
+    const options = isProd ? process.env.SERVER_DB_OPTS : process.env.ATLAS_DB_OPTS;
+
+    // To'liq URL: [Host] + [Dinamik Baza Nomi] + [Parametrlar]
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    const fullUrl = `${cleanBaseUrl}${finalDbName}${options || ""}`;
 
     try {
         const conn = await mongoose.createConnection(fullUrl, {
             autoIndex: true,
-            serverSelectionTimeoutMS: 5000 
+            serverSelectionTimeoutMS: 10000 
         }).asPromise();
 
-        console.log(`✅ Yangi baza ulandi: ${finalDbName}`);
+        console.log(`✅ [${isProd ? 'SERVER' : 'ATLAS'}] ulandi: ${finalDbName}`);
+        
         tenantConnections[finalDbName] = conn;
         return conn;
     } catch (err) {
