@@ -9,7 +9,7 @@ const tenantMiddleware = async (req, res, next) => {
          * Chunki body hali to'liq stream qilib bo'linmagan bo'lishi mumkin.
          * Frontend'dan doim 'x-tenant-id' header'ini yuboring.
          */
-        const dbName = req.headers['x-tenant-id'] || "safymilk"; 
+        const dbName = req.headers['x-tenant-id'] || "restouz"; 
 
         // 2. Agar dbName bo'lmasa, so'rovni shu yerda to'xtatamiz
         if (!dbName) {
