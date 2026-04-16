@@ -12,28 +12,42 @@ const { centralDbConnection } = require("./models/CentralDB/config/db.js");
 const app = express();
 const server = http.createServer(app);
 
-// ------------------ 1. CORS SOZLAMALARI (Routerlardan tepada bo'lishi shart) ------------------
+// ------------------ UNIVERSAL CORS SOZLAMALARI ------------------
 const allowedOrigins = [
-    "http://localhost:5173",   // Vite (Frontend)
-    "http://localhost:5000",   // Backend porti
+    "http://localhost:5173",
+    "http://localhost:5000",
     "https://restouz-core.company-erp.uz",
-    "capacitor://localhost",   // Mobile iOS
-    "http://localhost"         // Mobile Android
+    "capacitor://localhost",   // iOS uchun
+    "https://localhost",       // Android APK uchun (Eng muhimi)
+    "http://localhost"         // Ba'zi Android versiyalar uchun
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
+        // 1. Agar so'rov origin-siz kelsa (Mobil ilovalar yoki Server-to-Server)
+        // 2. Yoki origin ruxsat berilgan ro'yxatda bo'lsa
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            console.log("⚠️ CORS Bloklandi. Origin:", origin);
+            // Faqat Development jarayonida qaysi origin kelayotganini ko'rish uchun
+            console.warn(`⚠️ CORS Bloklandi. Origin: ${origin}`);
             callback(null, false);
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: [
+        'Content-Type', 
+        'Authorization', 
+        'x-tenant-id', 
+        'X-Requested-With', 
+        'Accept', 
+        'Origin'
+    ]
 }));
+
+// OPTIONS so'rovlari uchun (Pre-flight) alohida ishlov berish
+app.options('*', cors());
 
 // ------------------ 2. BASIC MIDDLEWARES ------------------
 app.use(express.json({ limit: '50mb' }));
