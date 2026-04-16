@@ -76,16 +76,75 @@ class UserService {
   /**
    * Barcha foydalanuvchilarni olish
    */
-  async GetUsers(req) {
-    const { User } = req.tenantModels;
-    try {
-      // Parolni chiqarmaslik uchun .select("-password") ishlatish tavsiya etiladi
-      const users = await User.find().select("-password").lean();
-      return users;
-    } catch (error) {
-      return { error: true, msg: error.message };
+ /**
+ * Foydalanuvchilar ro'yxatini olish (Filtrlash va Pagination bilan)
+ */
+async GetUsers(req) {
+  const { User } = req.tenantModels;
+  try {
+    // 1. Query parametrlarini olish (Front-enddan keladigan filterlar)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const roleId = req.query.roleId || null;
+
+    // 2. Dinamik Query (Filtr) yaratish
+    const query = { isActive: true }; // Faqat o'chirilmagan foydalanuvchilar
+
+    // Qidiruv mantiqi (FIO, Username yoki Telefon bo'yicha)
+    if (search) {
+      query.$or = [
+        { fullname: { $regex: search, $options: "i" } },
+        { username: { $regex: search, $options: "i" } },
+        { phoneNumber: { $regex: search, $options: "i" } }
+      ];
     }
+
+    // Rol bo'yicha filtr (Agar tanlangan bo'lsa)
+    if (roleId) {
+      query.roles = roleId;
+    }
+
+    // 3. Ma'lumotlarni bazadan olish
+    const users = await User.find(query)
+      .select("-password -__v") // Parol va versiyani chiqarmaymiz
+     .populate({
+    path: "roles",
+    populate: {
+      path: "permissions" // Mana bu joy permissionlarni ichini ochib beradi
+    }
+  })
+      .sort({ createdAt: -1 }) // Oxirgi qo'shilganlar yuqorida
+      .skip((page - 1) * limit) // Kerakli sahifaga sakrash
+      .limit(limit) // Sahifadagi elementlar soni
+      .lean(); // Mongoose obyektini oddiy JSONga aylantiradi (tezroq ishlaydi)
+
+    // 4. Jami natijalar sonini hisoblash (Frontendda pagination yasash uchun)
+    const totalCount = await User.countDocuments(query);
+
+    return {
+      success: true,
+      status: 200,
+      msg: "Foydalanuvchilar muvaffaqiyatli yuklandi",
+      data: users,
+      pagination: {
+        total: totalCount,
+        currentPage: page,
+        limit: limit,
+        totalPages: Math.ceil(totalCount / limit)
+      }
+    };
+
+  } catch (error) {
+    console.error("GET_USERS_ERROR:", error);
+    return {
+      success: false,
+      status: 500,
+      msg: "Foydalanuvchilarni yuklashda xatolik yuz berdi",
+      error: error.message
+    };
   }
+}
 
   /**
    * Bitta foydalanuvchini ID orqali olish

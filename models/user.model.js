@@ -10,43 +10,7 @@
       },
       action: {
         type: String,
-        enum: [
-          "start",                  // /start bosilganda
-          "login",                  // login jarayoni
-          "register",               // ro'yxatdan o'tish boshlangani
-          "register_fullname",      // F.I.O kiritilmoqda
-          "register_gender",        // jinsi tanlanmoqda
-          "register_age",
-          "register_username",      // username kiritilmoqda
-          "register_password",      // password kiritilmoqda
-          "register_phone",         // telefon raqam kiritilmoqda
-          "register_passport",      // passport raqam kiritilmoqda
-          "register_car_type",  // mashina turi tanlanmoqda
-          "register_car_number",// mashina raqami kiritilmoqda
-          "register_region",       // yashash manzili kiritilmoqda
-          "register_district",       // yashash manzili kiritilmoqda
-          "register_neighborhood",       // yashash manzili kiritilmoqda
-          "register_street",       // yashash manzili kiritilmoqda
-          "register_house_number",       // yashash manzili kiritilmoqda
-          "register_phone_number",
-          "register_car_number",
-          "register_next",
-          "register_successfully",
-          "login_successfully",
-          "login_username",
-          "login_password",
-          "register_capacity",      // mashina sig‘imi
-          "register_time",          // ish vaqti belgilanmoqda
-          "register_done",          // ro‘yxatdan o‘tish tugagan
-          "work",                   // ish holatiga o‘tgan
-          "waiting_order",          // buyurtma kutmoqda
-          "confirming_order",       // buyurtma tasdiqlanmoqda
-          "active_order",           // buyurtmada ishlayapti
-          "view_profile",           // profil ko‘rilmoqda
-          "editing_profile",        // profil tahrirlanmoqda
-          "blocked",                // bloklangan
-          "logout",                 // chiqish
-        ],
+       
         default: "register",
       },
 

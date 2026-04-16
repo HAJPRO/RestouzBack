@@ -2,6 +2,9 @@ const UserDto = require("../../dtos/user.dto");
 const bcrypt = require("bcryptjs");
 const tokenService = require("./token.service");
 const BaseError = require("../../errors/base.error");
+const { CentralTenantModel } = require("../../models/CentralDB/config/db"); // Markaziy (Master) baza modeli
+const initModels = require("../../models/initModels");
+const { getTenantDB } = require("../../middlewares/db/dbManager.middleware");
 
 class AuthService {
   /**
@@ -35,69 +38,66 @@ class AuthService {
     return { msg: "Foydalanuvchi qo'shildi", user: userDto, ...tokens };
   }
 
-  /**
-   * 🔑 Login qilish
-   */
-  /**
- * Foydalanuvchini tizimga kiritish (Multi-tenant support)
- * @param {Object} req - Request object
- * @param {String} username - Foydalanuvchi nomi
- * @param {String} password - Maxfiy parol
- */
-  async login(req, username, password) {
-    const { User, Token } = req.tenantModels;
+ 
+ async login(req, username, password) {
     const { companyCode } = req.body;
 
-    // 1. Model mavjudligini tekshirish (Early Exit)
-    if (!User || !Token) {
-      throw BaseError.InternalServerError("Ma'lumotlar bazasi bilan ulanishda xatolik (Tenant models missing)");
+    // 1. Markaziy bazadan kompaniyani tekshirish
+    const tenant = await CentralTenantModel.findOne({ companyCode, isActive: true });
+    
+    if (!tenant) {
+      throw BaseError.BadRequest("Bunday kompaniya tizimda mavjud emas yoki bloklangan!");
     }
 
-    // 2. Foydalanuvchini izlash (Faqat kerakli maydonlarni olish orqali performance'ni oshiramiz)
-    const user = await User.findOne({ username })
-      .populate({
-        path: 'roles',
-        select: 'name permissions' // Faqat kerakli maydonlarni populate qilish
-      })
-      .select('+password'); // Agar modelda password: { select: false } bo'lsa
+    // 2. Haqiqiy kompaniya bazasiga ulanishni hosil qilish
+    const db = await getTenantDB(tenant.dbName);
+    
+    // 3. AYNAN SHU BAZA MODELLARINI OLISH (Mana shu qator muhim!)
+    // Avvalgi req.tenantModels ni ishlatmang, u noto'g'ri bazaga bog'langan bo'lishi mumkin
+    const { User, Token } = initModels(db); 
 
+    if (!User || !Token) {
+      throw BaseError.InternalServerError("Kompaniya bazasiga ulanishda texnik xatolik!");
+    }
+
+    // 4. Foydalanuvchini AYNAN SHU kompaniya bazasidan qidirish
+   const user = await User.findOne({ username })
+  .populate({
+    path: 'roles',         // 1-daraja: User modelidagi roles massivini ochish
+    model: 'Role',         // Rol modeli nomi
+    populate: {
+      path: 'permissions', // 2-daraja: Role modeli ichidagi permissions massivini ochish
+      model: 'Permission'  // Permission modeli nomi
+    }
+  })
+  .select('+password');    // Yashirilgan parolni olish
+    // ... (qolgan parolni tekshirish va token yaratish qismi bir xil)
+    console.log(user)
     if (!user) {
       throw BaseError.BadRequest("Foydalanuvchi nomi yoki parol noto'g'ri");
-      // Xavfsizlik uchun: "Foydalanuvchi topilmadi" demaslik kerak
     }
 
-    // 3. Parolni tekshirish
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw BaseError.BadRequest("Foydalanuvchi nomi yoki parol noto'g'ri");
     }
-
-    // 4. DTO va Token yaratish
     const userDto = new UserDto(user);
-
-    // Token ichiga ortiqcha ma'lumot qo'shmaslik kerak (Payload hajmi uchun)
     const tokens = tokenService.generateToken({
       id: userDto.id,
       roles: userDto.roles,
-      companyCode
+      companyCode: tenant.companyCode,
     });
+console.log(userDto)
 
-    // 5. Refresh tokenni bazaga saqlash
-    try {
-      await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
-    } catch (error) {
-      console.error(`[TokenSaveError]: User ID ${userDto.id}`, error);
-      throw BaseError.InternalServerError("Tizimga kirishda texnik xatolik yuz berdi");
-    }
+    await tokenService.saveToken(userDto.id, tokens.refreshToken, Token);
 
-    // 6. Natijani qaytarish (Muvaffaqiyatli login)
     return {
       user: userDto,
       ...tokens,
-      companyCode,
-      loginAt: new Date() // Audit uchun foydali
+      companyCode: tenant.companyCode,
+      loginAt: new Date()
     };
-  }
+}
 
   /**
    * 🔄 Tokenni yangilash (Refresh)

@@ -5,144 +5,112 @@ const { Server } = require('socket.io');
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const mongoose = require("mongoose");
 const errorMiddleware = require("./middlewares/error.middleware.js");
 const tenantMiddleware = require("./middlewares/db/tenant.middleware.js");
+const { centralDbConnection } = require("./models/CentralDB/config/db.js");
 
 const app = express();
 const server = http.createServer(app);
-// ------------------ MIDDLEWARES ------------------
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-// ------------------ SOCKET.IO SOZLAMALARI ------------------
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    transports: ['websocket', 'polling']
-});
 
-
-
-// CORS sozlamalari - Mobil ilovalar uchun optimallashtirilgan
+// ------------------ 1. CORS SOZLAMALARI (Routerlardan tepada bo'lishi shart) ------------------
 const allowedOrigins = [
+    "http://localhost:5173",   // Vite (Frontend)
+    "http://localhost:5000",   // Backend porti
     "https://restouz-core.company-erp.uz",
-    "http://localhost:5173",
-    "http://localhost:5000",
-    "http://localhost",       // Android/Web HTTP
-    "https://localhost",      // 👈 SHUNI QO'SHING (iOS yoki ba'zi yangi Android WebView uchun)
-    "capacitor://localhost",  // iOS Capacitor
-    "http://localhost:8100"
+    "capacitor://localhost",   // Mobile iOS
+    "http://localhost"         // Mobile Android
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // MUHIM: Mobil ilovalar (Capacitor) ba'zan origin yubormaydi (!origin)
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            // Qaysi domen bloklanayotganini terminalda ko'rish uchun:
             console.log("⚠️ CORS Bloklandi. Origin:", origin);
             callback(null, false);
         }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-        'Origin',
-        'X-Requested-With',
-        'Content-Type',
-        'Accept',
-        'Authorization',
-        'x-tenant-id' // Maxsus header ruxsati
-    ]
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-id']
 }));
 
+// ------------------ 2. BASIC MIDDLEWARES ------------------
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-// ------------------ ROUTES ------------------
-const tenantRouter = express.Router();
-tenantRouter.use(tenantMiddleware);
+// ------------------ 3. SOCKET.IO SOZLAMALARI ------------------
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Yoki allowedOrigins ni bering
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling']
+});
 
-// Settings yo'nalishlari
-tenantRouter.use("/settings/permission", require("./routes/settings/permission/permission.route.js"));
-tenantRouter.use("/settings/role", require("./routes/settings/role/role.route.js"));
-tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
-
-// Umumiy yo'nalishlar
-tenantRouter.use("/auth", require("./routes/auth/auth.route.js"));
-tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
-tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
-tenantRouter.use("/order", require("./routes/order/order.route.js"));
-
-//HR
-tenantRouter.use("/hr/employee", require("./routes/hr/employee/employee.route.js"));
-
-
-app.use("/api/v1", tenantRouter);
-
-// Xatoliklarni ushlash (Routerlardan keyin bo'lishi shart)
-app.use(errorMiddleware);
-
-// ------------------ SOCKET.IO LOGIKASI ----------------
 io.on("connection", (socket) => {
     console.log("⚡ Yangi socket ulanishi:", socket.id);
 });
 
-// ------------------ DATABASE VA SERVER START ------------------
+// ------------------ 4. ROUTES (TARTIB MUHIM!) ------------------
+
+/**
+ * ⚠️ MUHIM: Auth route tenantMiddleware'dan tashqarida bo'lishi kerak.
+ * Chunki login vaqtida x-tenant-id headeri hali bo'lmasligi mumkin.
+ * Login ichida Master DB orqali o'zimiz ulanishni o'rnatamiz.
+ */
+app.use("/api/v1/auth", require("./routes/auth/auth.route.js"));
+
+// Barcha tenantga tegishli yo'nalishlar uchun umumiy router
+const tenantRouter = express.Router();
+tenantRouter.use(tenantMiddleware); // Har bir so'rovda x-tenant-id headerini tekshiradi
+
+// Tenant yo'nalishlari (Dinamik bazaga ulanadigan route'lar)
+tenantRouter.use("/settings/permission", require("./routes/settings/permission/permission.route.js"));
+tenantRouter.use("/settings/role", require("./routes/settings/role/role.route.js"));
+tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
+tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
+tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
+tenantRouter.use("/order", require("./routes/order/order.route.js"));
+tenantRouter.use("/hr/employee", require("./routes/hr/employee/employee.route.js"));
+
+// Tenant routerni asosiy app ga ulash
+app.use("/api/v1", tenantRouter);
+
+// ------------------ 5. ERROR HANDLING ------------------
+// Xatoliklarni ushlash routerlardan keyin bo'lishi shart
+app.use(errorMiddleware);
+
+// ------------------ 6. DATABASE VA SERVER START ------------------
 const PORT = process.env.PORT || 5000;
-const joriyMuhit = (process.env.NODE_ENV || "development").trim();
 
 const START = async () => {
     try {
-        // Muhitni aniqlash va bo'sh joylardan tozalash
-        const env = (process.env.NODE_ENV || 'development').trim().toLowerCase();
-        const isProd = env === 'production';
-
-        // .env dan qiymatlarni olish
-        const baseUrl = isProd ? process.env.SERVER_DB_BASE : process.env.ATLAS_DB_BASE;
-        const options = isProd ? process.env.SERVER_DB_OPTS : process.env.ATLAS_DB_OPTS;
-
-        // Xatolikni oldini olish uchun tekshiruv
-        if (!baseUrl) {
-            console.error("❌ Xatolik: .env faylida ulanish manzili ko'rsatilmagan!");
-            console.log("Qidirilgan o'zgaruvchi:", isProd ? 'SERVER_DB_BASE' : 'ATLAS_DB_BASE');
-            process.exit(1);
-        }
-
-        // Markaziy baza nomi
-        const centralDB = isProd ? "admin" : "test"; 
-        
-        // URL yaratishda xavfsizlik (baseUrl undefined bo'lsa endsWith xato bermasligi uchun)
-        const cleanBaseUrl = baseUrl.toString().trim();
-        const formattedUrl = cleanBaseUrl.endsWith('/') ? cleanBaseUrl : `${cleanBaseUrl}/`;
-        
-        const fullUrl = `${formattedUrl}${centralDB}${options || ""}`;
-
-        // MongoDB ga ulanish
-        await mongoose.connect(fullUrl, {
-            serverSelectionTimeoutMS: 5000, // 5 soniyada ulanmasa to'xtatadi
+        // Markaziy baza ulanishini kuzatish
+        centralDbConnection.on('connected', () => {
+            console.log(`✅ [MASTER] Central DB connected successfully`);
         });
 
-        console.log(`✅ MongoDB Markaziy ulanish muvaffaqiyatli: [${isProd ? 'SERVER' : 'ATLAS'}]`);
+        centralDbConnection.on('error', (err) => {
+            console.error(`❌ [MASTER] Central DB connection error:`, err);
+            process.exit(1); 
+        });
 
+        // Serverni ishga tushirish
         server.listen(PORT, '0.0.0.0', () => {
+            const env = (process.env.NODE_ENV || 'development').trim().toUpperCase();
             console.log(`\n--- RESTO.UZ TIZIM HOLATI ---`);
-            console.log(`🌍 MUHIT: ${env.toUpperCase()}`);
+            console.log(`🌍 MUHIT: ${env}`);
             console.log(`🚀 PORT: ${PORT}`);
-            console.log(`🔗 DB: ${centralDB}`);
+            console.log(`📦 MASTER DB: Connected`);
             console.log(`------------------------------\n`);
         });
 
     } catch (err) {
         console.error("❌ START xatosi:", err.message);
-        // Agar productionda bo'lsangiz, error stackni ham ko'rish foydali
-        if (process.env.NODE_ENV !== 'production') {
-            console.error(err.stack);
-        }
         process.exit(1);
     }
 };
