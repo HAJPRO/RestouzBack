@@ -10,6 +10,7 @@ const BookingSchema = require("../models/Tabel/booking.model.js");
 const CategorySchema = require("../models/Menu/category.model.js");
 const EmployeeSchema = require("../models/HR/Employee/employee.model.js");
 const FeeSchema = require("../models/Settings/service/fee.model.js");
+const CustomerSchema = require("../models/Customers/customer.model.js");
 
 
 
@@ -29,6 +30,7 @@ const initModels = (db) => {
         Booking: getModel('Booking', BookingSchema),
         Category: getModel('Category', CategorySchema),
         Employee: getModel('Employee', EmployeeSchema),
+        Customer: getModel('Customer', CustomerSchema),
         Fee: getModel('Fee', FeeSchema),
 
        
