@@ -9,10 +9,9 @@ const CartSchema = require("../models/Menu/cart.model.js");
 const BookingSchema = require("../models/Tabel/booking.model.js");
 const CategorySchema = require("../models/Menu/category.model.js");
 const EmployeeSchema = require("../models/HR/Employee/employee.model.js");
+const DepartmentSchema = require("../models/HR/Department/department.model.js");
 const FeeSchema = require("../models/Settings/service/fee.model.js");
 const CustomerSchema = require("../models/Customers/customer.model.js");
-
-
 
 const initModels = (db) => {
     // Modelni bazadan olish yoki yaratish funksiyasi
@@ -30,6 +29,7 @@ const initModels = (db) => {
         Booking: getModel('Booking', BookingSchema),
         Category: getModel('Category', CategorySchema),
         Employee: getModel('Employee', EmployeeSchema),
+        Department: getModel('Department', DepartmentSchema),
         Customer: getModel('Customer', CustomerSchema),
         Fee: getModel('Fee', FeeSchema),
 

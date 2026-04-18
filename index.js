@@ -90,6 +90,7 @@ tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
 tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
 tenantRouter.use("/order", require("./routes/order/order.route.js"));
 tenantRouter.use("/hr/employee", require("./routes/hr/employee/employee.route.js"));
+tenantRouter.use("/hr/department", require("./routes/hr/department/department.route.js"));
 
 //Service Fee
 tenantRouter.use("/settings/service/fee", require("./routes/settings/service/fee.route.js"));
