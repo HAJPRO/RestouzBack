@@ -71,18 +71,17 @@ const CartSchema = new Schema({
     default: null
   },
   staffId: {
-    // type: Schema.Types.ObjectId,
-    // ref: 'User', // Yoki 'Staff'
-    // required: true // Ofitsiantsiz buyurtma bo'lmasligi kerak
-     type: Number, 
-    default: 0 
+    type: Schema.Types.ObjectId,
+    ref: 'Employee', // Yoki 'Staff'
+    default: null
+    
+    
   },
   customerId: {
-    // type: Schema.Types.ObjectId,
-    // ref: 'Customer',
-    // default: null
-     type: Number, 
-    default: 0 
+    type: Schema.Types.ObjectId,
+    ref: 'Customer',
+    default: null
+    
   },
 
   // Buyurtma holati
