@@ -67,7 +67,7 @@ const CartSchema = new Schema({
   // --- Bog'liqliklar ---
   tableId: {
     type: Schema.Types.ObjectId,
-    ref: 'Table',
+    ref: 'Tabel',
     default: null
   },
   staffId: {

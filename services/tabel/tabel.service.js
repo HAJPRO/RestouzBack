@@ -23,21 +23,31 @@ class TabelService {
     const { Tabel } = req.tenantModels;
 
     // Tabel modelidagi 'bookings' maydonini populate qilamiz
-    const data = await Tabel.find()
+   const data = await Tabel.find()
   .populate([
     { 
       path: 'bookings' 
     },
     { 
       path: 'cartId',
-      populate: {
-        path: 'items.foodId', // Savat ichidagi items massividagi foodId-ni ochish
-        select: 'image' // Faqat kerakli maydonlarni (shu jumladan image) olish
-      }
+      populate: [
+        {
+          path: 'items.foodId',
+          select: 'image'
+        },
+        {
+          path: 'staffId', // Cart ichidagi staffId-ni ochish
+          select: 'firstname lastname ' // Kerakli maydonlarni tanlab olish (ixtiyoriy)
+        },
+        {
+          path: 'customerId', // Cart ichidagi customerId-ni ochish
+          select: 'name phone' // Kerakli maydonlarni tanlab olish (ixtiyoriy)
+        }
+      ]
     }
   ])
+  .lean();
   
-        .lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
 
     return { 
         success: true,
@@ -48,7 +58,7 @@ class TabelService {
 async GetById(req) {
     const { Tabel } = req.tenantModels;
     const data = await Tabel.findById(req.params.id)
-        .populate('bookings') // 'bookings' maydonini populate qilamiz
+        .populate('bookings')
         .lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
     return { 
         success: true,

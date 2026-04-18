@@ -25,15 +25,19 @@ class OrderService {
 
     throw new BaseError("Noto'g'ri action: " + action, 400);
 }
-     async GetAll(req) {
+    async GetAll(req) {
     const { Cart } = req.tenantModels;
 
-    // Menu modelidagi 'bookings' maydonini populate qilamiz
-    const data = await Cart.find().lean(); // Tezroq ishlashi va JS obyekti sifatida qaytarishi uchun
+    // customerId, staffId va tableId maydonlarini populate qilamiz
+    const data = await Cart.find()
+        .populate('customerId')
+        .populate('staffId')
+        .populate('tableId')
+        .lean(); // JS obyekti sifatida tezroq qaytarish uchun
 
     return { 
         success: true,
-        msg: "Barcha buyurtmalar ", 
+        msg: "Barcha buyurtmalar", 
         data 
     };
 }

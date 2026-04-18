@@ -101,9 +101,6 @@ async CreateCategory(req) { // 1. async qo'shildi
     const { Cart } = req.tenantModels;
     
     const { id,orderData } = req.body; 
-console.log(req.body);
-
-    // 'triue' so'zi 'true' deb yozilishi kerak
     const data = await Cart.findByIdAndUpdate(
         id, 
         {edit:true,...orderData}, 
