@@ -91,6 +91,9 @@ tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
 tenantRouter.use("/order", require("./routes/order/order.route.js"));
 tenantRouter.use("/hr/employee", require("./routes/hr/employee/employee.route.js"));
 
+//Service Fee
+tenantRouter.use("/settings/service/fee", require("./routes/settings/service/fee.route.js"));
+
 // Tenant routerni asosiy app ga ulash
 app.use("/api/v1", tenantRouter);
 
