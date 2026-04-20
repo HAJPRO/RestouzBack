@@ -97,6 +97,8 @@ tenantRouter.use("/settings/service/fee", require("./routes/settings/service/fee
 
 //Customer
 tenantRouter.use("/customer", require("./routes/customer/customer.route.js"));
+//Zone
+tenantRouter.use("/zone", require("./routes/Zone/zone.route.js"));
 
 // Tenant routerni asosiy app ga ulash
 app.use("/api/v1", tenantRouter);
