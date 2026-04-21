@@ -45,7 +45,6 @@ class TabelService {
         },
         {
           path: 'customerId',
-          select: 'name phone'
         }
       ]
     }
