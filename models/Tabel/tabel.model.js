@@ -11,9 +11,10 @@ const TabelSchema = new Schema(
       type: String,
       required: true,
     },
-     position: {
-      type: String,
-      required: true,
+     zoneId: {
+       type: Schema.Types.ObjectId,
+      ref: "Zone",
+      default:0
 
     },
     status: {

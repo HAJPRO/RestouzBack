@@ -23,10 +23,14 @@ class TabelService {
     const { Tabel } = req.tenantModels;
 
     // Tabel modelidagi 'bookings' maydonini populate qilamiz
-   const data = await Tabel.find()
+  const data = await Tabel.find()
   .populate([
     { 
       path: 'bookings' 
+    },
+    {
+      path: 'zoneId', // Zone ma'lumotlarini olib kelish
+    //   select: 'name color' // Masalan: faqat nomi va rangini olish (ixtiyoriy)
     },
     { 
       path: 'cartId',
@@ -36,18 +40,17 @@ class TabelService {
           select: 'image'
         },
         {
-          path: 'staffId', // Cart ichidagi staffId-ni ochish
-          select: 'firstname lastname ' // Kerakli maydonlarni tanlab olish (ixtiyoriy)
+          path: 'staffId',
+          select: 'firstname lastname'
         },
         {
-          path: 'customerId', // Cart ichidagi customerId-ni ochish
-          select: 'name phone' // Kerakli maydonlarni tanlab olish (ixtiyoriy)
+          path: 'customerId',
+          select: 'name phone'
         }
       ]
     }
   ])
   .lean();
-  
 
     return { 
         success: true,
