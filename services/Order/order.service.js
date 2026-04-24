@@ -25,15 +25,21 @@ class OrderService {
 
     throw new BaseError("Noto'g'ri action: " + action, 400);
 }
-    async GetAll(req) {
+  async GetAll(req) {
     const { Cart } = req.tenantModels;
 
-    // customerId, staffId va tableId maydonlarini populate qilamiz
     const data = await Cart.find()
         .populate('customerId')
         .populate('staffId')
-        .populate('tableId')
-        .lean(); // JS obyekti sifatida tezroq qaytarish uchun
+        .populate({
+            path: 'tableId',
+            populate: {
+                path: 'cartId', // Stol ichidagi savatni ochish
+                model: 'Cart'   // Model nomini aniq ko'rsatish tavsiya etiladi
+            }
+        })
+        .sort({ createdAt: -1 }) // Eng yangi buyurtmalar yuqorida turishi uchun
+        .lean();
 
     return { 
         success: true,
@@ -57,7 +63,7 @@ class OrderService {
  * @param {Object} req - Request object
  */
 async SubmitPayment(req) {
-  const { Cart, Customer, Tabel } = req.tenantModels;
+  const { Cart, Customer, Tabel, Transaction } = req.tenantModels;
   const { 
     orderId, 
     customerId, 
@@ -66,55 +72,107 @@ async SubmitPayment(req) {
     tableId 
   } = req.body;
 
+  // 1. MongoDB sessiyasini boshlash (Tranzaksiyalar uchun)
   const session = await Cart.startSession();
   session.startTransaction();
 
   try {
-    // 1. To'lov turlarini ajratib olamiz
+    // To'lov turlarini hisob-kitob qilish
     const debtAmount = payments.find(p => p.type === 'debt')?.amount || 0;
     const usedBalanceAmount = payments.find(p => p.type === 'balance')?.amount || 0;
+    const surplus = surplusAmount || 0;
 
-    // 2. Buyurtmani (Cart) yopish
+    // 2. Buyurtmani (Cart) muvaffaqiyatli deb yopish
     await Cart.findByIdAndUpdate(orderId, {
       $set: {
         status: 'completed',
         payments: payments,
-        surplusAmount: surplusAmount || 0,
+        surplusAmount: surplus,
         isDebtClosed: debtAmount <= 0
       }
     }, { session });
 
-    // 3. Mijoz balansini matematik to'g'ri yangilash
+    // 3. Agar mijoz biriktirilgan bo'lsa, mantiqiy amallarni bajarish
     if (customerId) {
-      /**
-       * FORMULA:
-       * balanceChange = Ortiqcha pul (Qaytim) - Olingan qarz - Ishlatilgan depozit
-       * * Masalan: 
-       * 1. Qaytim (surplus): +10,000
-       * 2. Qarz (debt): -5,000
-       * 3. Balansdan to'lov (usedBalance): -20,000
-       */
-      const balanceChange = (surplusAmount || 0) - debtAmount - usedBalanceAmount;
+      const transactionRecords = [];
+
+      // A. Nasiya (Debt) shakllangan bo'lsa log yozish
+      if (debtAmount > 0) {
+        transactionRecords.push({
+          customerId,
+          orderId,
+          type: 'debt',
+          amount: debtAmount,
+          method: 'balance',
+          // staffId: req.user._id,
+          description: `Buyurtma #${orderId} uchun nasiya shakllandi`
+        });
+      }
+
+      // B. Qaytim (Surplus) balansga o'tkazilgan bo'lsa log yozish
+      if (surplus > 0) {
+        transactionRecords.push({
+          customerId,
+          orderId,
+          type: 'surplus',
+          amount: surplus,
+          method: 'cash',
+          // staffId: req.user._id,
+          description: `Buyurtma #${orderId} dan qaytim balansga qo'shildi`
+        });
+      }
+
+      // C. Eski balansdan (Used Balance) foydalanilgan bo'lsa log yozish
+      if (usedBalanceAmount > 0) {
+        transactionRecords.push({
+          customerId,
+          orderId,
+          type: 'refund', // Balansdan yechish mantiqi
+          amount: usedBalanceAmount,
+          method: 'balance',
+          // staffId: req.user._id,
+          description: `Buyurtma #${orderId} uchun eski balansdan to'lov qilindi`
+        });
+      }
+
+      // Tranzaksiya yozuvlarini bazaga saqlash
+      if (transactionRecords.length > 0) {
+        await Transaction.insertMany(transactionRecords, { session });
+      }
+
+      // Mijoz balansini va buyurtmalar sonini yangilash
+      const balanceChange = surplus - debtAmount - usedBalanceAmount;
+      const customerUpdate = {
+        $inc: { orderCount: 1 } // Har doim 1 taga oshadi
+      };
 
       if (balanceChange !== 0) {
-        await Customer.findByIdAndUpdate(customerId, { 
-          $inc: { balance: balanceChange } 
-        }, { session });
+        customerUpdate.$inc.balance = balanceChange;
       }
+
+      await Customer.findByIdAndUpdate(
+        customerId, 
+        customerUpdate, 
+        { session }
+      );
     }
     
-    // 4. Stolni bo'shatish
+    // 4. Stolni bo'shatish va buyurtmani undan ajratish
     await Tabel.findByIdAndUpdate(tableId, { 
       $set: { status: '0', cartId: null } 
     }, { session });
 
+    // Barcha amallarni tasdiqlash
     await session.commitTransaction();
-    return { success: true };
+    return { success: true, message: "To'lov muvaffaqiyatli yakunlandi" };
 
   } catch (e) {
+    // Xatolik bo'lsa, barcha amallarni bekor qilish (Rollback)
     await session.abortTransaction();
-    throw e;
+    console.error("SubmitPayment Error:", e);
+    throw e; // Global xato ushlagichga yuborish
   } finally {
+    // Sessiyani har doim yopish
     session.endSession();
   }
 }

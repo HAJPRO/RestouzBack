@@ -100,6 +100,10 @@ tenantRouter.use("/customer", require("./routes/customer/customer.route.js"));
 //Zone
 tenantRouter.use("/zone", require("./routes/Zone/zone.route.js"));
 
+//Transaction
+tenantRouter.use("/transaction", require("./routes/transaction/transaction.route.js"));
+
+
 // Tenant routerni asosiy app ga ulash
 app.use("/api/v1", tenantRouter);
 

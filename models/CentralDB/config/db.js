@@ -4,7 +4,7 @@ const TenantSchema = require('../CentralTenant.model.js');
 // 1. Markaziy (Master) ulanishni yaratish
 const centralDbConnection = mongoose.createConnection(process.env.CENTRAL_DB_URI, {
     // Zarur bo'lsa pool size va boshqa opts'lar
-    maxPoolSize: 10
+    maxPoolSize: 1000
 });
 
 centralDbConnection.on('connected', () => console.log('✅ Central DB-ga ulandi'));
