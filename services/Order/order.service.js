@@ -52,6 +52,73 @@ class OrderService {
         data 
     };
 }
+/**
+ * To'lovni yakunlash va orderni yopish
+ * @param {Object} req - Request object
+ */
+async SubmitPayment(req) {
+  const { Cart, Customer, Tabel } = req.tenantModels;
+  const { 
+    orderId, 
+    customerId, 
+    payments, 
+    surplusAmount, 
+    tableId 
+  } = req.body;
+
+  const session = await Cart.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. To'lov turlarini ajratib olamiz
+    const debtAmount = payments.find(p => p.type === 'debt')?.amount || 0;
+    const usedBalanceAmount = payments.find(p => p.type === 'balance')?.amount || 0;
+
+    // 2. Buyurtmani (Cart) yopish
+    await Cart.findByIdAndUpdate(orderId, {
+      $set: {
+        status: 'completed',
+        payments: payments,
+        surplusAmount: surplusAmount || 0,
+        isDebtClosed: debtAmount <= 0
+      }
+    }, { session });
+
+    // 3. Mijoz balansini matematik to'g'ri yangilash
+    if (customerId) {
+      /**
+       * FORMULA:
+       * balanceChange = Ortiqcha pul (Qaytim) - Olingan qarz - Ishlatilgan depozit
+       * * Masalan: 
+       * 1. Qaytim (surplus): +10,000
+       * 2. Qarz (debt): -5,000
+       * 3. Balansdan to'lov (usedBalance): -20,000
+       */
+      const balanceChange = (surplusAmount || 0) - debtAmount - usedBalanceAmount;
+
+      if (balanceChange !== 0) {
+        await Customer.findByIdAndUpdate(customerId, { 
+          $inc: { balance: balanceChange } 
+        }, { session });
+      }
+    }
+    
+    // 4. Stolni bo'shatish
+    await Tabel.findByIdAndUpdate(tableId, { 
+      $set: { status: '0', cartId: null } 
+    }, { session });
+
+    await session.commitTransaction();
+    return { success: true };
+
+  } catch (e) {
+    await session.abortTransaction();
+    throw e;
+  } finally {
+    session.endSession();
+  }
+}
+
 
 
 }

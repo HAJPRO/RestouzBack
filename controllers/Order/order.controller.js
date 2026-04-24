@@ -33,6 +33,21 @@ class OrderController {
       next(error);
     }
   }
+   async SubmitPayment(req, res, next) {
+    try {
+      // Service-dan qaytgan ma'lumotni olamiz
+      const data = await OrderService.SubmitPayment(req);
+
+      // Frontend-ga javob qaytarish
+      return res.status(201).json({
+        success: true,
+        message: "To'lov muvaffaqiyatli",
+      });
+    } catch (error) {
+      // Xatolikni errorMiddleware-ga uzatish
+      next(error);
+    }
+  }
   }
 
 module.exports = new OrderController();
