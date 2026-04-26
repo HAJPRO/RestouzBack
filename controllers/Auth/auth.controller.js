@@ -6,7 +6,7 @@ class AuthController {
   async register(req, res, next) {
     try {
 
-      const data = await authService.register(req, req.body);
+      const data = await AuthService.register(req, req.body);
       res.cookie("refreshToken", data.refreshToken, {
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -25,7 +25,7 @@ class AuthController {
 
       // 1. Service qatlamiga murojaat
       // 'req' obyektini uzatish orqali Service ichida tenantModels'dan foydalanish mumkin
-      const userData = await authService.login(req, username, password);
+      const userData = await AuthService.login(req, username, password);
 
       // 2. Cookie sozlamalari (Security Hardening)
       const isProd = process.env.NODE_ENV === 'production';
@@ -56,7 +56,7 @@ class AuthController {
   }
   async update(req, res, next) {
     try {
-      const data = await authService.update(req, req.body);
+      const data = await AuthService.update(req, req.body);
       return res.json(data);
     } catch (error) {
       next(error);
@@ -65,7 +65,7 @@ class AuthController {
   async activation(req, res, next) {
     try {
       const userId = req.params.id;
-      await authService.activation(req, userId);
+      await AuthService.activation(req, userId);
       return res.redirect(process.env.CLIENT_URL);
     } catch (error) {
       next(error);
@@ -75,7 +75,7 @@ class AuthController {
   async logout(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const token = await authService.logout(req, refreshToken);
+      const token = await AuthService.logout(req, refreshToken);
       res.clearCookie("refreshToken");
       return res.json({ token });
     } catch (error) {
@@ -86,7 +86,7 @@ class AuthController {
   async refresh(req, res, next) {
     try {
       const { refreshToken } = req.cookies;
-      const data = await authService.refresh(req, refreshToken);
+      const data = await AuthService.refresh(req, refreshToken);
       res.cookie("refreshToken", data.refreshToken, {
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -99,7 +99,7 @@ class AuthController {
 
   async getUser(req, res, next) {
     try {
-      const data = await authService.getUsers(req);
+      const data = await AuthService.getUsers(req);
       return res.json(data);
     } catch (error) {
       next(error);
