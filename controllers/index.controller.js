@@ -1,4 +1,4 @@
-// controllers/index.js//
+// controllers/index.js
 
 module.exports = {
   AuthController: require("./Auth/auth.controller.js"),
