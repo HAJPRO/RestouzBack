@@ -2,7 +2,7 @@
 
 module.exports = {
   AuthRouter: require("./auth/auth.route.js"),
-  ZoneRouter: require("./Zone/zone.route.js"),
+  ZoneRouter: require("./zone/zone.route.js"),
   CustomerRouter: require("./customer/customer.route.js"),
   DepartmentRouter: require("./hr/department/department.route.js"),
   EmployeeRouter: require("./hr/employee/employee.route.js"),
