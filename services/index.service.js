@@ -1,7 +1,7 @@
 // services/index.js
 
 module.exports = {
-  AuthService: require("./auth/auth.service.js"),
+  AuthService: require("./Auth/auth.service.js"),
   ZoneService: require("./Zone/zone.service.js"),
   CustomerService: require("./customer/customer.service.js"),
   DepartmentService: require("./hr/department/department.service.js"),
