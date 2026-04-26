@@ -2,6 +2,7 @@ const BaseError = require("../../errors/base.error");
 
 class TabelService {
     async Create(req) {
+        console.log("uq")
         const { Tabel } = req.tenantModels;
        const  {action} = req.body;
        if(action === 'create'){
@@ -30,7 +31,7 @@ class TabelService {
     },
     {
       path: 'zoneId', // Zone ma'lumotlarini olib kelish
-    //   select: 'name color' // Masalan: faqat nomi va rangini olish (ixtiyoriy)
+    //   select: 'name color' // Masalan: faqat nomi va rangini olish (ixtiyoriy)//
     },
     { 
       path: 'cartId',

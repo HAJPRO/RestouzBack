@@ -1,8 +1,9 @@
 {
-  "name": "server",
+  "name": "restoback",
   "version": "1.0.0",
   "description": "Restouza uchun backend",
   "main": "index.js",
+  
   "scripts": {
     "dev": "nodemon index.js"
   },

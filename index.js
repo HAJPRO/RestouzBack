@@ -12,7 +12,7 @@ const { centralDbConnection } = require("./models/CentralDB/config/db.js");
 const app = express();
 const server = http.createServer(app);
 
-// ------------------ UNIVERSAL CORS SOZLAMALARI ------------------
+// ------------------ UNIVERSAL CORS SOZLAMALARI --------------
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5000",
