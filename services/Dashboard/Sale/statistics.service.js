@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 
 class StatisticsService {
     /**
-     * Dashboard statistikasi (Tushum, Buyurtmalar, To'lov turlari)////
+     * Dashboard statistikasi (Tushum, Buyurtmalar, To'lov turlari)
      */
    async GetDashboardStats(req) {
     const { Cart } = req.tenantModels;
