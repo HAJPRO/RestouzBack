@@ -1,4 +1,5 @@
-const DepartmentService = require("../../../services/HR/Department/department.service");
+const {DepartmentService} = require("../../../services/index.service");
+
 
 class DepartmentController {
   async Create(req, res, next) {

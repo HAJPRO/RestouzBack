@@ -1,5 +1,6 @@
 const express = require("express");
-const ZoneController = require("../../controllers/Zone/zone.controller.js");
+const {ZoneController} = require("../../controllers/index.controller.js");
+
 const authMiddleware = require("../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../middlewares/db/tenant.middleware.js");
 

@@ -1,4 +1,4 @@
-const TabelService = require("../../services/tabel/tabel.service");
+const {TabelService} = require("../../services/index.service");
 
 class TabelController {
 

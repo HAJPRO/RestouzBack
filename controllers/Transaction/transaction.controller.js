@@ -1,4 +1,5 @@
-const TransactionService = require("../../services/Transaction/transaction.service");
+const {TransactionService} = require("../../services/index.service");
+
 
 class TransactionController {
   // Yangi tranzaksiya yaratish (To'lov, qarz va h.k.)

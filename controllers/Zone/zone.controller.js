@@ -1,4 +1,5 @@
-const ZoneService = require("../../services/Zone/zone.service");
+const {ZoneService} = require("../../services/index.service");
+
 
 class ZoneController {
   /**

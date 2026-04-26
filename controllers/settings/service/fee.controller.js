@@ -1,4 +1,5 @@
-const FeeService = require("../../../services/Settings/service/fee.service");
+const {FeeService} = require("../../../services/index.service");
+
 class FeeController {
   async Create(req, res, next) {
     try {

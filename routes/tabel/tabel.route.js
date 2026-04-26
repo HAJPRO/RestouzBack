@@ -1,5 +1,6 @@
 const express = require("express");
-const TabelController = require("../../controllers/tabel/tabel.controller.js");
+const {TabelController} = require("../../controllers/index.controller.js");
+
 const authMiddleware = require("../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../middlewares/db/tenant.middleware.js"); // Yangi middleware
 

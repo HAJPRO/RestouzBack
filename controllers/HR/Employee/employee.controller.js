@@ -1,5 +1,4 @@
-const EmployeeService = require("../../../services/HR/Employee/employee.service");
-
+const {EmployeeService} = require("../../../services/index.service");
 class EmployeeController {
   async Create(req, res, next) {
     try {

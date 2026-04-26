@@ -1,4 +1,4 @@
-const PermissionService = require("../../services/Admin/permission.service.js");
+const {PermissionService} = require("../../services/index.service");
 
 class PermissionController {
   /**

@@ -4,7 +4,8 @@ const authMiddleware = require("../../../middlewares/auth.middleware.js");
 const authorMiddleware = require("../../../middlewares/author.middleware.js");
 const onlyAdminAccess = require("../../../middlewares/admin.middleware.js");
 
-const FeeController = require("../../../controllers/settings/service/fee.controller.js");
+const {FeeController} = require("../../../controllers/index.controller.js");
+
 const {
     permissionAddValidator,
 } = require("../../../helpers/admin/permissionValidator");

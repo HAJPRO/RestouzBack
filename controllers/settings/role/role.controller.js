@@ -1,4 +1,5 @@
-const RoleService = require("../../../services/Settings/role/role.service.js");
+const {RoleService} = require("../../../services/index.service");
+
 class RoleController {
   async Create(req, res, next) {
     try {

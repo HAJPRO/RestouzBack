@@ -1,5 +1,6 @@
 const express = require("express");
-const TransactionController = require("../../controllers/Transaction/transaction.controller.js");
+const {TransactionController} = require("../../controllers/index.controller.js");
+
 const authMiddleware = require("../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../middlewares/db/tenant.middleware.js");
 

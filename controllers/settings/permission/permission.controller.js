@@ -1,4 +1,5 @@
-const PermissionService = require("../../../services/Settings/permission/permission.service.js");
+const {PermissionService} = require("../../../services/index.service");
+
 
 class PermissionController {
   async CreatePermission(req, res, next) {

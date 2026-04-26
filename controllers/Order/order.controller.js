@@ -1,4 +1,5 @@
-const OrderService = require("../../services/Order/order.service");
+const {OrderService} = require("../../services/index.service");
+
 
 class OrderController {
   async Create(req, res, next) {

@@ -1,5 +1,6 @@
 const express = require("express");
-const MenuController = require("../../controllers/Menu/menu.controller.js");
+const {MenuController} = require("../../controllers/index.controller.js");
+
 const authMiddleware = require("../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../middlewares/db/tenant.middleware.js");
 // Multer sozlamalarini import qilamiz

@@ -82,27 +82,48 @@ app.use("/api/v1/auth", require("./routes/auth/auth.route.js"));
 const tenantRouter = express.Router();
 tenantRouter.use(tenantMiddleware); // Har bir so'rovda x-tenant-id headerini tekshiradi
 
+// tenantRouter joylashgan asosiy fayl
+
+// tenantRouter joylashgan fayl
+
+const { 
+  PermissionRouter, 
+  RoleRouter, 
+  UserRouter, 
+  TabelRouter, 
+  MenuRouter, 
+  OrderRouter, 
+  EmployeeRouter, 
+  DepartmentRouter, 
+  FeeRouter, 
+  CustomerRouter, 
+  ZoneRouter, 
+  TransactionRouter,
+  StatisticsRouter
+} = require("./routes/index.route");
+
 // Tenant yo'nalishlari (Dinamik bazaga ulanadigan route'lar)
-tenantRouter.use("/settings/permission", require("./routes/settings/permission/permission.route.js"));
-tenantRouter.use("/settings/role", require("./routes/settings/role/role.route.js"));
-tenantRouter.use("/settings", require("./routes/settings/users/user.route.js"));
-tenantRouter.use("/tabel", require("./routes/tabel/tabel.route.js"));
-tenantRouter.use("/menu", require("./routes/menu/menu.route.js"));
-tenantRouter.use("/order", require("./routes/order/order.route.js"));
-tenantRouter.use("/hr/employee", require("./routes/hr/employee/employee.route.js"));
-tenantRouter.use("/hr/department", require("./routes/hr/department/department.route.js"));
+tenantRouter.use("/settings/permission", PermissionRouter);
+tenantRouter.use("/settings/role", RoleRouter);
+tenantRouter.use("/settings", UserRouter);
+tenantRouter.use("/tabel", TabelRouter);
+tenantRouter.use("/menu", MenuRouter);
+tenantRouter.use("/order", OrderRouter);
+tenantRouter.use("/hr/employee", EmployeeRouter);
+tenantRouter.use("/hr/department", DepartmentRouter);
 
-//Service Fee
-tenantRouter.use("/settings/service/fee", require("./routes/settings/service/fee.route.js"));
+// Service Fee
+tenantRouter.use("/settings/service/fee", FeeRouter);
 
-//Customer
-tenantRouter.use("/customer", require("./routes/customer/customer.route.js"));
-//Zone
-tenantRouter.use("/zone", require("./routes/Zone/zone.route.js"));
+// Customer & Zone
+tenantRouter.use("/customer", CustomerRouter);
+tenantRouter.use("/zone", ZoneRouter);
 
-//Transaction
-tenantRouter.use("/transaction", require("./routes/transaction/transaction.route.js"));
+// Transaction
+tenantRouter.use("/transaction", TransactionRouter);
 
+// Statistics
+tenantRouter.use("/dashboard/sale/statistics", StatisticsRouter);
 
 // Tenant routerni asosiy app ga ulash
 app.use("/api/v1", tenantRouter);

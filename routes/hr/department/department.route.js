@@ -1,5 +1,6 @@
 const express = require("express");
-const DepartmentController = require("../../../controllers/HR/Department/department.controller.js");
+const {DepartmentController} = require("../../../controllers/index.controller.js");
+
 const authMiddleware = require("../../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../../middlewares/db/tenant.middleware.js");
 

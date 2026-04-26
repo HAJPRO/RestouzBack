@@ -1,17 +1,18 @@
 const express = require("express");
-const authController = require("../../controllers/Auth/auth.controller.js");
+const {AuthController} = require("../../controllers/index.controller.js");
+
 // const { body } = require("express-validator");
 const authMiddleware = require("../../middlewares/auth.middleware.js");
 const tenantMiddleware = require("../../middlewares/db/tenant.middleware.js"); // Yangi middleware
 
 const router = express.Router();
 
-router.post("/register", authController.register);
-router.get("/activation/:id", authController.activation);
-router.post("/login", tenantMiddleware, authController.login);
-router.post("/update", authController.update);
-router.post("/logout", authController.logout);
-router.get("/refresh", authController.refresh);
-router.get("/get-users", authController.getUser);
+router.post("/register", AuthController.register);
+router.get("/activation/:id", AuthController.activation);
+router.post("/login", tenantMiddleware, AuthController.login);
+router.post("/update", AuthController.update);
+router.post("/logout", AuthController.logout);
+router.get("/refresh", AuthController.refresh);
+router.get("/get-users", AuthController.getUser);
 
 module.exports = router;
